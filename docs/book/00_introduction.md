@@ -35,11 +35,11 @@ Factories, Anti-Corruption Layers). The patterns are real, but they're
 Gleam is small. The whole language has the feel of a careful editor's pass:
 nothing extra, nothing fancy, no escape hatches.
 
-- **Algebraic data types** with exhaustive pattern matching. Every alternative gets named; the compiler refuses to let you forget one.
-- **Opaque types** — a one-keyword feature that lets a module hide its constructor. Outside the module, the type exists; the only way to make one is through functions you expose.
-- **No exceptions, no nulls.** Failure is a value (`Result(a, e)`, `Option(a)`). Callers can't pretend it didn't happen.
-- **No `if`.** Every branch is a `case`, which forces you to consider the alternatives.
-- **One control-flow primitive (`use <-`)** that handles guards, chaining, resource handling, and any custom flow you'd write — with a single syntactic rule.
+- **[Algebraic data types](https://tour.gleam.run/data-types/custom-types/)** with exhaustive [pattern matching](https://tour.gleam.run/flow-control/case-expressions/). Every alternative gets named; the compiler refuses to let you forget one.
+- **[Opaque types](https://tour.gleam.run/advanced-features/opaque-types/)** — a one-keyword feature that lets a module hide its constructor. Outside the module, the type exists; the only way to make one is through functions you expose.
+- **No exceptions, no nulls.** Failure is a value ([`Result(a, e)`](https://tour.gleam.run/data-types/results/), `Option(a)`). Callers can't pretend it didn't happen.
+- **No `if`.** Every branch is a [`case`](https://tour.gleam.run/flow-control/case-expressions/), which forces you to consider the alternatives.
+- **One control-flow primitive ([`use <-`](https://tour.gleam.run/advanced-features/use/))** that handles guards, chaining, resource handling, and any custom flow you'd write — with a single syntactic rule.
 
 Each of these maps almost suspiciously onto what DDD wants:
 
@@ -86,3 +86,14 @@ Each chapter follows the same shape:
 
 The exercises are real. Type the code. Try to satisfy the tests. Then read
 the walk-through.
+
+---
+
+## Gleam resources
+
+Useful tabs to keep open while you work through the book:
+
+- **[The Gleam Language Tour](https://tour.gleam.run/)** — interactive, in-browser. The single best place to look up any language feature.
+- **[Standard library reference](https://hexdocs.pm/gleam_stdlib/)** — `gleam/string`, `gleam/list`, `gleam/result`, etc. You'll reach for these in every kata.
+- **[Gleam documentation index](https://gleam.run/documentation/)** — guides, cheatsheets (including a [Gleam-for-Rust](https://gleam.run/cheatsheets/gleam-for-rust-users/) and [Gleam-for-Elixir](https://gleam.run/cheatsheets/gleam-for-elixir-users/) one), conventions.
+- **[Gleam home](https://gleam.run/)** — install instructions if you don't already have the `gleam` CLI.
