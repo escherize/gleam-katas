@@ -15,13 +15,33 @@ gleam test
 
 ## How this repo is laid out
 
-Two branches, one purpose each:
+**`master`** is where you work — `src/*.gleam` is stubbed with `todo`,
+every type and function the tests reference is declared, the bodies are
+blank.
 
-- **`master`** — *start learning here.* `src/*.gleam` is stubbed with `todo`. Every type and function the tests reference is declared, but the bodies are blank. Your job is to fill them in.
-- **`solutions`** — the worked-out reference implementation for every kata. Switch to it (`git checkout solutions`) when you want to compare your version against the canonical one.
+**Per-kata reference branches** snapshot the project after each kata is
+finished, cumulatively:
+
+| Branch         | What's working                                           | `gleam test`      |
+| -------------- | -------------------------------------------------------- | ----------------- |
+| `kata-1-done`  | `email`                                                  | 10 pass / 31 fail |
+| `kata-2-done`  | + `money`                                                | 25 pass / 16 fail |
+| `kata-3-done`  | + `customer`                                             | 25 pass / 16 fail |
+| `kata-4-done`  | + `order` (aggregate, pre-events)                        | 41 pass / 0 fail  |
+| `kata-5-done`  | + `order` with domain events + scenario tests + chapter  | 56 pass / 0 fail  |
+
+Use them when you're stuck or want to see how a kata's code looks: `git
+checkout kata-3-done` and inspect `src/customer.gleam`. Each branch is
+the *cumulative* state after that kata, so `kata-4-done` includes
+working code for katas 1-4.
+
+`solutions` is currently a synonym for `kata-4-done` (preserved for the
+moment as the "pre-events kata 4 reference"). Treat the `kata-N-done`
+branches as authoritative going forward.
 
 The book, the tests, the task specs, and everything in `docs/` are
-identical on both branches. The only thing that differs is `src/`.
+shared across branches. The differences are in `src/` (and on
+`kata-5-done` / `master`, the kata-5-era test files).
 
 ## Roadmap
 
@@ -37,7 +57,7 @@ identical on both branches. The only thing that differs is `src/`.
 1. Read the relevant chapter in `docs/book/`.
 2. Open the corresponding `src/*.gleam` file. Replace each `todo` with a real implementation.
 3. Run `gleam test` until the tests for that kata pass.
-4. Compare your solution to the one on the `solutions` branch.
+4. Compare your solution to the matching `kata-N-done` branch (`git diff master kata-3-done -- src/customer.gleam`).
 5. Move to the next kata.
 
 The tests are the spec. If your code makes them pass, you've solved the
