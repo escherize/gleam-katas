@@ -28,20 +28,22 @@ finished, cumulatively:
 | `kata-2-done`  | + `money`                                                | 25 pass / 16 fail |
 | `kata-3-done`  | + `customer`                                             | 25 pass / 16 fail |
 | `kata-4-done`  | + `order` (aggregate, pre-events)                        | 41 pass / 0 fail  |
-| `kata-5-done`  | + `order` with domain events + scenario tests + chapter  | 56 pass / 0 fail  |
 
 Use them when you're stuck or want to see how a kata's code looks: `git
 checkout kata-3-done` and inspect `src/customer.gleam`. Each branch is
 the *cumulative* state after that kata, so `kata-4-done` includes
 working code for katas 1-4.
 
-`solutions` is currently a synonym for `kata-4-done` (preserved for the
-moment as the "pre-events kata 4 reference"). Treat the `kata-N-done`
-branches as authoritative going forward.
+`kata-5-done` will be created from your work once you finish kata 5 on
+master. (Until then, the chapter at `docs/book/06_kata_events.md` is the
+reference — but it shows the full solution, so stop at the "Hints"
+section if you want to work it through cold.)
+
+`solutions` is currently a synonym for `kata-4-done`. Treat the
+`kata-N-done` branches as authoritative going forward.
 
 The book, the tests, the task specs, and everything in `docs/` are
-shared across branches. The differences are in `src/` (and on
-`kata-5-done` / `master`, the kata-5-era test files).
+shared across branches. The only thing that differs is `src/`.
 
 ## Roadmap
 
