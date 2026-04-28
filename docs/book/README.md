@@ -12,6 +12,7 @@ enforceable.
 - [03 — Kata 2: Value Objects with operations (`Money`)](03_kata_money.md) — composition, `use <-` guards, funneling through `new`.
 - [04 — Kata 3: Entities (`Customer`)](04_kata_customer.md) — identity vs value, ID types, `result.try`.
 - [05 — Kata 4: Aggregates (`Order`)](05_kata_order.md) — internal types, multi-guard chains, `list.try_map` / `list.try_fold`.
+- [06 — Kata 5: Domain Events](06_kata_events.md) — tuples, `result.try` earning its keep, scenario tests with a command engine.
 
 ## Prerequisites
 
