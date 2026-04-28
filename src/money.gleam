@@ -1,76 +1,49 @@
-// A sum type: a Currency is exactly one of these. Like an enum.
+// Kata 2 — Value Objects with operations (Money)
+// Read: docs/book/03_kata_money.md
+// Tests: test/money_test.gleam
+//
+// Implement the function bodies. Try the naive version first — every
+// operation does its own checks. Then refactor: route everything through
+// `new` and lift the currency check into a `use <-` helper.
+//
+// Reference solution lives on the `solutions` branch.
+
 pub type Currency {
   USD
   EUR
   GBP
 }
 
-// `opaque` hides the Money(...) constructor outside this module.
-// Callers can't build a Money directly — they must go through `new`,
-// so any Money in the wild is guaranteed valid.
 pub opaque type Money {
   Money(amount: Int, currency: Currency)
 }
 
-// Errors are values, not exceptions. Functions return `Result(Ok, Error)`
-// and the type system forces the caller to handle both branches.
 pub type MoneyError {
   NegativeAmount
   CurrencyMismatch
 }
 
-// Smart constructor. Validates input and returns Ok(Money) or Error(...).
+// Amount is in minor units (cents/pence). $1.50 -> new(150, USD).
 pub fn new(amount: Int, currency: Currency) -> Result(Money, MoneyError) {
-  // `case` is Gleam's only conditional — there is no `if`.
-  case amount >= 0 {
-    True -> Ok(Money(amount, currency))
-    False -> Error(NegativeAmount)
-  }
+  todo
 }
 
-pub fn same_currency(a: Money, b: Money) {
-  a.currency == b.currency
+pub fn same_currency(a: Money, b: Money) -> Bool {
+  todo
 }
 
-// Guard helper. The `then` parameter is a callback — a function value.
-// Lowercase `a` in the type is a generic type variable (any type), so this
-// works for any caller whose body returns `Result(SOMETHING, MoneyError)`.
-fn require_same_currency(
-  a: Money,
-  b: Money,
-  then: fn() -> Result(a, MoneyError),
-) -> Result(a, MoneyError) {
-  case same_currency(a, b) {
-    False -> Error(CurrencyMismatch)
-    True -> then()
-  }
-}
-
-// `use <- f(args)` is sugar for `f(args, fn() { ...rest of block })`.
-// this is Gleam's only advanced flow control mechanism. like ? in rust.
-// Imagine:
-// (defmacro require-same-currency [a b & body]
-//  `(if (= (:currency ~a) (:currency ~b))
-//     (do ~@body)
-//     {:error :currency-mismatch}))
-// Reads top-to-bottom as: "require same currency, then compute the sum."
 pub fn add(a: Money, b: Money) -> Result(Money, MoneyError) {
-  use <- require_same_currency(a, b)
-  new(a.amount + b.amount, a.currency)
+  todo
 }
 
 pub fn subtract(a: Money, b: Money) -> Result(Money, MoneyError) {
-  use <- require_same_currency(a, b)
-  new(a.amount - b.amount, a.currency)
+  todo
 }
 
-// No currency check needed — multiplying by an Int can't change currency.
-// Routed through `new` so a negative factor gets rejected the same way
-// negative construction does.
 pub fn multiply(money: Money, factor: Int) -> Result(Money, MoneyError) {
-  new(money.amount * factor, money.currency)
+  todo
 }
 
 pub fn zero(money: Money) -> Money {
-  Money(..money, amount: 0)
+  todo
 }

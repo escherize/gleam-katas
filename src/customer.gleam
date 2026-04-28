@@ -1,5 +1,14 @@
+// Kata 3 — Entities (Customer)
+// Read: docs/book/04_kata_customer.md
+// Tests: test/customer_test.gleam (currently empty — write your own as you go)
+//
+// Implement the function bodies. Notice which functions return `Result`
+// and which don't — the value-object inputs (`Email`, `CustomerId`) are
+// already validated, so functions that only take those don't need to fail.
+//
+// Reference solution lives on the `solutions` branch.
+
 import email.{type Email}
-import gleam/string
 
 pub opaque type CustomerId {
   CustomerId(value: String)
@@ -15,11 +24,7 @@ pub type CustomerError {
 }
 
 pub fn new_id(raw: String) -> Result(CustomerId, CustomerError) {
-  let raw = string.trim(raw)
-  case string.is_empty(raw) {
-    True -> Error(EmptyId)
-    False -> Ok(CustomerId(raw))
-  }
+  todo
 }
 
 pub fn new(
@@ -27,27 +32,24 @@ pub fn new(
   name: String,
   email: Email,
 ) -> Result(Customer, CustomerError) {
-  case string.length(name) {
-    0 -> Error(EmptyName)
-    _ -> Ok(Customer(id, name, email))
-  }
+  todo
 }
 
 pub fn id(customer: Customer) -> CustomerId {
-  customer.id
+  todo
 }
 
 pub fn rename(
   customer: Customer,
   new_name: String,
 ) -> Result(Customer, CustomerError) {
-  new(customer.id, new_name, customer.email)
+  todo
 }
 
 pub fn change_email(customer: Customer, new_email: Email) -> Customer {
-  Customer(customer.id, customer.name, new_email)
+  todo
 }
 
 pub fn same_customer(a: Customer, b: Customer) -> Bool {
-  a.id == b.id
+  todo
 }
