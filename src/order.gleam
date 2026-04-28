@@ -1,3 +1,26 @@
+// Kata 4 — Aggregates (Order)
+// Read: docs/book/05_kata_order.md
+// Tests: test/order_test.gleam
+//
+// Kata 5 layers on top: Domain Events.
+// Spec: docs/raw_kata.md (search for "Kata 5: Domain Events").
+//
+// Three operations now return both the new state AND the events that
+// describe what happened:
+//
+//   new       -> #(Order, List(OrderEvent))
+//   add_line  -> Result(#(Order, List(OrderEvent)), OrderError)
+//   place     -> Result(#(Order, List(OrderEvent)), OrderError)
+//
+// Past tense: OrderCreated, LineAdded, OrderPlaced. Events are facts that
+// already happened — failures emit no events.
+//
+// `OrderPlaced` carries the total, so `place` now has to compute the total
+// (which can fail) before it can produce the event. This is where the
+// `use <-` and `result.try` chaining starts really paying off.
+//
+// Reference solution lives on the `solutions` branch.
+
 import customer.{type CustomerId}
 import gleam/list
 import gleam/result
@@ -7,8 +30,7 @@ pub opaque type OrderId {
   OrderId(value: String)
 }
 
-// Internal — no `pub` on the constructor's fields conceptually,
-// and the outside world should not build these directly.
+// Internal — this type does not exist outside this module.
 type OrderLine {
   OrderLine(sku: String, quantity: Int, unit_price: Money)
 }
@@ -37,6 +59,12 @@ pub type OrderError {
   InvalidOrderTotal
 }
 
+pub type OrderEvent {
+  OrderCreated(order_id: OrderId, customer_id: CustomerId)
+  LineAdded(order_id: OrderId, sku: String, quantity: Int, unit_price: Money)
+  OrderPlaced(order_id: OrderId, total: Money)
+}
+
 pub fn new_id(raw: String) -> Result(OrderId, OrderError) {
   case raw {
     "" -> Error(EmptyOrderId)
@@ -44,22 +72,23 @@ pub fn new_id(raw: String) -> Result(OrderId, OrderError) {
   }
 }
 
-// Creates a Draft order with no lines.
-pub fn new(id: OrderId, customer_id: CustomerId) -> Order {
-  Order(id, customer_id, [], Draft)
+pub fn new(id: OrderId, customer_id: CustomerId) -> #(Order, List(OrderEvent)) {
+  let order = Order(id, customer_id, [], Draft)
+  let event = OrderCreated(id, customer_id)
+  #(order, [event])
 }
 
-fn no_modify_placed(
-  o: Order,
-  then: fn() -> Result(t, OrderError),
-) -> Result(t, OrderError) {
-  case o.status == Placed {
-    False -> then()
-    True -> Error(CannotModifyPlacedOrder)
+fn cannot_modify_placed_order(
+  order: Order,
+  then: fn() -> Result(a, OrderError),
+) -> Result(a, OrderError) {
+  case order.status {
+    Placed -> Error(CannotModifyPlacedOrder)
+    _ -> then()
   }
 }
 
-fn non_empty_sku(
+fn require_non_empty_sku(
   sku: String,
   then: fn() -> Result(a, OrderError),
 ) -> Result(a, OrderError) {
@@ -69,7 +98,7 @@ fn non_empty_sku(
   }
 }
 
-fn positive_qty(
+fn require_positive_quantity(
   q: Int,
   then: fn() -> Result(a, OrderError),
 ) -> Result(a, OrderError) {
@@ -79,19 +108,27 @@ fn positive_qty(
   }
 }
 
-fn currency_matches(
-  existing: List(OrderLine),
-  new_price: Money,
+fn order_line_currency_matches(
+  order: Order,
+  unit_price: Money,
   then: fn() -> Result(a, OrderError),
 ) -> Result(a, OrderError) {
-  case existing {
-    // if there is an order, make sure we have homogeneous unit lines
-    [ol, ..] -> {
-      case money.same_currency(ol.unit_price, new_price) {
+  case order.lines {
+    [] -> then()
+    [ol, ..] ->
+      case money.same_currency(ol.unit_price, unit_price) {
         True -> then()
         False -> Error(CurrencyMismatch)
       }
-    }
+  }
+}
+
+fn require_non_empty_lines(
+  order: Order,
+  then: fn() -> Result(a, OrderError),
+) -> Result(a, OrderError) {
+  case order.lines {
+    [] -> Error(CannotPlaceEmptyOrder)
     _ -> then()
   }
 }
@@ -101,51 +138,37 @@ pub fn add_line(
   sku: String,
   quantity: Int,
   unit_price: Money,
-) -> Result(Order, OrderError) {
-  use <- no_modify_placed(order)
-  use <- non_empty_sku(sku)
-  use <- positive_qty(quantity)
-  use <- currency_matches(order.lines, unit_price)
-  let new_line = OrderLine(sku, quantity, unit_price)
-  Ok(Order(..order, lines: [new_line, ..order.lines]))
+) -> Result(#(Order, List(OrderEvent)), OrderError) {
+  use <- cannot_modify_placed_order(order)
+  use <- require_non_empty_sku(sku)
+  use <- require_positive_quantity(quantity)
+  use <- order_line_currency_matches(order, unit_price)
+  let new_order_line = OrderLine(sku, quantity, unit_price)
+  let new_order_lines = [new_order_line, ..order.lines]
+  let order = Order(..order, lines: new_order_lines)
+  Ok(#(order, [LineAdded(order.id, sku, quantity, unit_price)]))
 }
 
-pub fn place(order: Order) -> Result(Order, OrderError) {
-  use <- no_modify_placed(order)
-  case order.lines {
-    [] -> Error(CannotPlaceEmptyOrder)
-    _ -> Ok(Order(..order, status: Placed))
-  }
+pub fn place(order: Order) -> Result(#(Order, List(OrderEvent)), OrderError) {
+  use <- cannot_modify_placed_order(order)
+  use <- require_non_empty_lines(order)
+  use total <- result.try(total(order))
+  let order = Order(..order, status: Placed)
+  Ok(#(order, [OrderPlaced(order.id, total)]))
 }
 
-// Calculate the total value of all items in an order
 pub fn total(order: Order) -> Result(Money, OrderError) {
   case order.lines {
-    // If the order has at least one line...
-    [ol, ..] -> {
-      // Step 1: Calculate the total amount for each line (unit_price * quantity)
-      // This uses list.try_map because money.multiply can fail (e.g., overflow)
-      // We get a Result(List(Money), money.MoneyError)
-      use amounts <- result.try(
-        list.try_map(order.lines, fn(ol) {
-          // For each order line, multiply unit price by quantity
-          money.multiply(ol.unit_price, ol.quantity)
-        })
-        // Convert any money.MoneyError to our domain error type
-        // TODO: Should distinguish between currency vs calculation errors
-        |> result.map_error(fn(_) { InvalidOrderTotal }),
-      )
-
-      // Step 2: Sum up all the line totals
-      // Start with zero in the same currency as the first line
-      // Use try_fold because money.add can fail (e.g., currency mismatch, overflow)
-      list.try_fold(amounts, money.zero(ol.unit_price), money.add)
-      // Convert money.MoneyError to domain error
-      // Currency mismatch here would be a programming error since amounts should be homogeneous
-      |> result.map_error(fn(_) { InvalidOrderTotal })
-    }
-
-    // If the order has no lines, we can't calculate a total
-    _ -> Error(InvalidOrderTotal)
+    [] -> Error(InvalidOrderTotal)
+    [ol, ..] ->
+      order.lines
+      |> list.try_fold(money.zero(ol.unit_price), fn(acc, line) {
+        use subtotal <- result.try(money.multiply(
+          line.unit_price,
+          line.quantity,
+        ))
+        money.add(acc, subtotal)
+      })
+      |> result.replace_error(InvalidOrderTotal)
   }
 }
