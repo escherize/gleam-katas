@@ -180,6 +180,33 @@ This is the moral equivalent of:
 - Haskell: `email <- liftError InvalidEmail (Email.new raw_email)`
 - F#: `let! email = ...`
 
+### Hand-rolling your own
+
+`result.try` is the canonical one-arg helper, but the same shape works for any domain step where you want to compute something fallible and bind its success value into the rest of the block. The callback parameter is how the helper **yields** a value back to you:
+
+```gleam
+fn get_total(
+  order: Order,
+  then: fn(Money) -> Result(a, OrderError),
+) -> Result(a, OrderError) {
+  case total(order) {
+    Ok(money) -> then(money)
+    Error(e) -> Error(e)
+  }
+}
+
+pub fn place(order: Order) -> Result(#(Order, List(OrderEvent)), OrderError) {
+  use <- cannot_modify_placed_order(order)   // guard — zero-arg thunk
+  use total <- get_total(order)              // chain — yields Money
+  let order = Order(..order, status: Placed)
+  Ok(#(order, [OrderPlaced(order.id, total)]))
+}
+```
+
+The two helpers are the same mechanism with different callback arities. The intuition: a zero-arg callback is a thunk the helper either runs or skips; add parameters and that thunk becomes a yielding mechanism — the helper hands values into the rest of your block.
+
+`get_total` here behaves identically to `use total <- result.try(total(order))`. Reach for the hand-rolled version when the helper has more to do than unwrap (logging, metrics, locking, alternate short-circuit conditions) or when a domain name like `get_total` reads better at the call site than the generic `result.try`.
+
 **Key gotcha — error types must match.** `result.try` requires the input's
 error type to match the function's return error type. When they differ, lift
 the inner error with `result.map_error(WrappingConstructor)` — exactly what
