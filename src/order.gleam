@@ -2,15 +2,26 @@
 // Read: docs/book/05_kata_order.md
 // Tests: test/order_test.gleam
 //
-// Implement the function bodies. The recommended path:
-// 1. Get a naive `add_line` working with one big nested `case`.
-// 2. Carve each invariant into a small helper that takes a callback.
-// 3. Apply them in `add_line` via `use <-`. State checks first, arg
-//    validation second.
-// 4. Reuse the same helpers in `place` where they apply.
-// 5. For `total`, reach for `list.try_map` then `list.try_fold`.
+// Kata 5 layers on top: Domain Events.
+// Spec: docs/raw_kata.md (search for "Kata 5: Domain Events").
 //
-// Reference solution lives on the `solutions` branch.
+// Three operations now return both the new state AND the events that
+// describe what happened:
+//
+//   new       -> #(Order, List(OrderEvent))
+//   add_line  -> Result(#(Order, List(OrderEvent)), OrderError)
+//   place     -> Result(#(Order, List(OrderEvent)), OrderError)
+//
+// Past tense: OrderCreated, LineAdded, OrderPlaced. Events are facts that
+// already happened — failures emit no events.
+//
+// `OrderPlaced` carries the total, so `place` now has to compute the total
+// (which can fail) before it can produce the event. This is where the
+// `use <-` and `result.try` chaining starts really paying off.
+//
+// Reference solution lives on the `solutions` branch (still pre-events at
+// time of writing — solutions branch will be updated once you've worked
+// through this kata).
 
 import customer.{type CustomerId}
 import money.{type Money}
@@ -48,11 +59,20 @@ pub type OrderError {
   InvalidOrderTotal
 }
 
+pub type OrderEvent {
+  OrderCreated(order_id: OrderId, customer_id: CustomerId)
+  LineAdded(order_id: OrderId, sku: String, quantity: Int, unit_price: Money)
+  OrderPlaced(order_id: OrderId, total: Money)
+}
+
 pub fn new_id(raw: String) -> Result(OrderId, OrderError) {
   todo
 }
 
-pub fn new(id: OrderId, customer_id: CustomerId) -> Order {
+pub fn new(
+  id: OrderId,
+  customer_id: CustomerId,
+) -> #(Order, List(OrderEvent)) {
   todo
 }
 
@@ -61,11 +81,13 @@ pub fn add_line(
   sku: String,
   quantity: Int,
   unit_price: Money,
-) -> Result(Order, OrderError) {
+) -> Result(#(Order, List(OrderEvent)), OrderError) {
   todo
 }
 
-pub fn place(order: Order) -> Result(Order, OrderError) {
+pub fn place(
+  order: Order,
+) -> Result(#(Order, List(OrderEvent)), OrderError) {
   todo
 }
 
