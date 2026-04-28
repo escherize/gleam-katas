@@ -19,9 +19,7 @@
 // (which can fail) before it can produce the event. This is where the
 // `use <-` and `result.try` chaining starts really paying off.
 //
-// Reference solution lives on the `solutions` branch (still pre-events at
-// time of writing — solutions branch will be updated once you've worked
-// through this kata).
+// Reference solution lives on the `solutions` branch.
 
 import customer.{type CustomerId}
 import money.{type Money}
