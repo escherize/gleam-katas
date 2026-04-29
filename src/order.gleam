@@ -73,6 +73,12 @@ pub fn new_id(raw: String) -> Result(OrderId, OrderError) {
   }
 }
 
+/// Public accessor — needed by the repository layer (kata 6) so it can
+/// extract the ID from an order to use as the storage key.
+pub fn id(order: Order) -> OrderId {
+  order.id
+}
+
 pub fn new(id: OrderId, customer_id: CustomerId) -> #(Order, List(OrderEvent)) {
   let order = Order(id, customer_id, [], Draft)
   let event = OrderCreated(id, customer_id)
