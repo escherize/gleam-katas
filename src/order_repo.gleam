@@ -29,11 +29,14 @@
 //// Don't forget to `gleam add gleam_otp` (already done in this repo) so
 //// you can import gleam/otp/actor and gleam/erlang/process.
 
+import gleam/dict.{type Dict}
+import gleam/erlang/process.{type Subject}
+import gleam/otp/actor
+import gleam/result
 import order.{type Order, type OrderId}
 
 pub type RepoError {
   NotFound
-  // add more variants if you need them (StorageError, CorruptRow, ...)
 }
 
 pub type OrderRepo {
@@ -43,8 +46,40 @@ pub type OrderRepo {
   )
 }
 
-// Once you wire the actor, change this return type to
-// `Result(OrderRepo, actor.StartError)` so startup failures bubble up.
-pub fn in_memory() -> Result(OrderRepo, Nil) {
-  todo
+pub type Msg {
+  Find(id: OrderId, reply_to: Subject(Result(Order, RepoError)))
+  Save(order: Order, reply_to: Subject(Result(Nil, RepoError)))
+}
+
+fn handle_msg(
+  store: Dict(OrderId, Order),
+  msg: Msg,
+) -> actor.Next(Dict(OrderId, Order), Msg) {
+  case msg {
+    Find(id:, reply_to:) -> {
+      let order = store |> dict.get(id) |> result.replace_error(NotFound)
+      process.send(reply_to, order)
+      actor.continue(store)
+    }
+    Save(order:, reply_to:) -> {
+      let new_state = dict.insert(store, order.id(order), order)
+      process.send(reply_to, Ok(Nil))
+      actor.continue(new_state)
+    }
+  }
+}
+
+pub fn in_memory() -> Result(OrderRepo, actor.StartError) {
+  use started <- result.try(
+    actor.new(dict.new())
+    |> actor.on_message(handle_msg)
+    |> actor.start,
+  )
+  let pid = started.data
+  Ok(
+    OrderRepo(
+      find: fn(id) { process.call(pid, 100, fn(subject) { Find(id, subject) }) },
+      save: fn(order) { process.call(pid, 100, Save(order, _)) },
+    ),
+  )
 }
