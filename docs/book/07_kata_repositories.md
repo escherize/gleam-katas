@@ -13,8 +13,10 @@ layer. Nothing in `order.gleam` learns what storage looks like.
 
 Two consequences:
 
-1. **Use cases become testable without infrastructure.** Place an order, load it back, assert on the events — no DB, no fixtures.
-2. **Storage strategy is pluggable.** In-memory dict on Tuesday, Postgres on Wednesday — same use-case code on top.
+1. **Use cases become testable without infrastructure.** Place an order, load it
+   back, assert on the events — no DB, no fixtures.
+2. **Storage strategy is pluggable.** In-memory dict on Tuesday, Postgres on
+   Wednesday — same use-case code on top.
 
 The key DDD discipline: **one repository per aggregate**, not per
 entity. You save an `Order`, not an `OrderLine`. The aggregate is the
@@ -167,14 +169,38 @@ pub type PlaceOrderError {
 }
 ```
 
-`result.map_error(RepoFailed)` lifts a `Result(_, RepoError)` to a
-`Result(_, PlaceOrderError)`. Same for domain errors. The cause is
-preserved; the layer is named. Callers can match on either level.
+The conversion happens via `result.map_error`, but it relies on a
+Gleam fact that's easy to miss: **constructors are functions.** When
+you write `pub type PlaceOrderError { RepoFailed(RepoError) | ... }`,
+`RepoFailed` is two things at once:
 
-Note the trick: `RepoFailed` is a one-argument constructor, which means
-it *is* a function `fn(RepoError) -> PlaceOrderError`. You pass it
-directly to `result.map_error` — no `fn(e) { RepoFailed(e) }` wrapper
-needed.
+- a *pattern* (used in `case` to destructure: `case e { RepoFailed(inner) -> ... }`)
+- a *value of type `fn(RepoError) -> PlaceOrderError`* (used anywhere a function is expected)
+
+`result.map_error` has signature `fn(Result(a, e1), fn(e1) -> e2) -> Result(a, e2)` —
+it takes a Result and a function from the old error type to the new
+error type, applies the function only on the `Error` branch, and
+returns a Result whose error type is whatever the function returns.
+
+Pass `RepoFailed` (a function `fn(RepoError) -> PlaceOrderError`) and
+the result's error type becomes `PlaceOrderError`:
+
+```gleam
+let r1: Result(Order, RepoError)        = repo.find(id)
+let r2: Result(Order, PlaceOrderError)  = r1 |> result.map_error(RepoFailed)
+//                                    RepoFailed is the function ^
+```
+
+The cause is preserved (the original `RepoError` lives inside the
+`RepoFailed` wrapper); the layer is named (callers can pattern-match
+on `RepoFailed(_)` vs `DomainFailed(_)` to know which side broke).
+
+Why this matters: `result.try` requires the inner Result and the outer
+function's return type to share an error type. Without the
+`map_error`, you'd get `Result(_, RepoError)` from the repo but the
+outer function returns `Result(_, PlaceOrderError)` — type mismatch.
+The `map_error(RepoFailed)` is the conversion that lets the chain
+type-check.
 
 ---
 
@@ -204,7 +230,9 @@ pub type OrderRepo {
   )
 }
 
-pub fn in_memory() -> Result(OrderRepo, actor.StartError)
+pub fn in_memory() -> Result(OrderRepo, actor.StartError) {
+  todo
+}
 ```
 
 Create `src/place_order.gleam` exposing:
@@ -218,7 +246,9 @@ pub type PlaceOrderError {
 pub fn run(
   repo: OrderRepo,
   id: OrderId,
-) -> Result(#(Order, List(OrderEvent)), PlaceOrderError)
+) -> Result(#(Order, List(OrderEvent)), PlaceOrderError) {
+  todo
+}
 ```
 
 Wire `in_memory` to an actor that holds a `Dict(OrderId, Order)`. The
@@ -248,226 +278,3 @@ in-memory repo).
 
 ---
 
-## Solution
-
-```gleam
-// src/order_repo.gleam
-import gleam/dict.{type Dict}
-import gleam/erlang/process.{type Subject}
-import gleam/otp/actor
-import gleam/result
-import order.{type Order, type OrderId}
-
-pub type RepoError {
-  NotFound
-  CorruptRow(reason: String)
-  StorageError(reason: String)
-}
-
-pub type OrderRepo {
-  OrderRepo(
-    find: fn(OrderId) -> Result(Order, RepoError),
-    save: fn(Order) -> Result(Nil, RepoError),
-  )
-}
-
-// Internal — outside this module nobody ever holds a Subject(Msg).
-type Msg {
-  Find(id: OrderId, reply: Subject(Result(Order, RepoError)))
-  Save(order: Order, reply: Subject(Result(Nil, RepoError)))
-}
-
-fn handle_msg(
-  state: Dict(OrderId, Order),
-  msg: Msg,
-) -> actor.Next(Dict(OrderId, Order), Msg) {
-  case msg {
-    Find(id, reply) -> {
-      let result = dict.get(state, id) |> result.replace_error(NotFound)
-      process.send(reply, result)
-      actor.continue(state)
-    }
-    Save(o, reply) -> {
-      let new_state = dict.insert(state, order.id(o), o)
-      process.send(reply, Ok(Nil))
-      actor.continue(new_state)
-    }
-  }
-}
-
-pub fn in_memory() -> Result(OrderRepo, actor.StartError) {
-  use started <- result.try(
-    actor.new(dict.new())
-    |> actor.on_message(handle_msg)
-    |> actor.start,
-  )
-  let pid = started.data
-  Ok(OrderRepo(
-    find: fn(id) { process.call(pid, 100, fn(reply) { Find(id, reply) }) },
-    save: fn(o) { process.call(pid, 100, fn(reply) { Save(o, reply) }) },
-  ))
-}
-```
-
-```gleam
-// src/place_order.gleam
-import gleam/result
-import order.{type Order, type OrderEvent, type OrderError, type OrderId}
-import order_repo.{type OrderRepo, type RepoError}
-
-pub type PlaceOrderError {
-  RepoFailed(RepoError)
-  DomainFailed(OrderError)
-}
-
-pub fn run(
-  repo: OrderRepo,
-  id: OrderId,
-) -> Result(#(Order, List(OrderEvent)), PlaceOrderError) {
-  use order <- result.try(repo.find(id) |> result.map_error(RepoFailed))
-  use #(placed, events) <- result.try(
-    order.place(order) |> result.map_error(DomainFailed),
-  )
-  use _ <- result.try(repo.save(placed) |> result.map_error(RepoFailed))
-  Ok(#(placed, events))
-}
-```
-
----
-
-## Walk-through
-
-**`OrderRepo` is the contract, not the implementation.** The use case
-takes one. The test passes one. Production `main` passes a different
-one. Same use-case code runs against any value of type `OrderRepo`.
-This is *parametric polymorphism without ceremony* — no interface
-declarations, no virtual dispatch tables, just a record whose fields
-are functions.
-
-**The actor is a closure of state.** From outside, the actor's
-existence is invisible — callers see two functions. The `Dict` is the
-actor's state; messages mutate it; replies flow back through reply
-subjects. This is the "state machine with a mailbox" model that Erlang
-has had for thirty years, exposed in Gleam through `actor.start` +
-`Subject`.
-
-**`process.call` is synchronous request/reply built on async
-primitives.** Internally it creates a fresh `Subject(Result)`, embeds
-it in the message, sends, and waits on that subject's mailbox. The
-actor sends the reply to that subject. From the caller's view it's a
-function call. From the actor's view it's a message-and-reply pattern.
-Same primitives, different shapes.
-
-**`place_order.run` reads top-to-bottom as the use case spec.** Three
-fallible steps, one `Ok` at the end. No try/catch, no defensive null
-checks, no "did this succeed?" booleans. The type signature *is* the
-contract; the body is the implementation of that contract.
-
-**The error vocabulary names layers.** `RepoFailed(NotFound)` is
-unambiguously different from `DomainFailed(CannotPlaceEmptyOrder)`. An
-HTTP boundary that consumes this can return 404 vs 422 trivially:
-
-```gleam
-case place_order.run(repo, id) {
-  Ok(_) -> http.ok(...)
-  Error(RepoFailed(NotFound)) -> http.not_found()
-  Error(DomainFailed(CannotPlaceEmptyOrder)) -> http.unprocessable("empty order")
-  Error(_) -> http.internal_error()
-}
-```
-
----
-
-## Critique
-
-**The repo's API is two functions.** Real apps need more — `delete`,
-`list_by_customer`, paginated queries, batch operations. Adding them is
-mechanical (one new message variant, one new branch in `handle_msg`,
-one new field in `OrderRepo`). The pattern scales but the boilerplate
-grows linearly. Once you have ~6 fields, look hard at whether some of
-them are different aggregates wearing one repo's clothes.
-
-**`save` always returns `Ok(Nil)`** in the in-memory implementation —
-there's no failure path because `dict.insert` can't fail. A real
-implementation (Postgres) would have storage errors. The
-`Result(Nil, RepoError)` return type already accommodates that; the
-in-memory version just never exercises it.
-
-**No concurrency story.** A single actor processes messages
-sequentially. That's correct (no race conditions) but it's a bottleneck
-if you need to handle a thousand concurrent saves. Real implementations
-partition state across multiple actors or delegate to a backing store
-that handles its own concurrency.
-
-**The actor's failure modes are unhandled.** If `handle_msg` panics,
-the actor dies and every subsequent `process.call` times out.
-Production OTP code uses *supervisors* to restart dying actors —
-out of scope for this kata.
-
-**The 100ms timeout is arbitrary.** Production code should plumb
-timeouts from configuration, not hard-code them.
-
-**Postgres is sketched, not built.** A `pub fn postgres(pool: Pool) ->
-OrderRepo` would have the same shape — closures over a connection
-pool, queries that map rows back to `Order` *through smart
-constructors*, errors mapped to `RepoError`. The interface stays the
-same; only the body of `find` / `save` changes. **That's the whole
-point of the pattern.**
-
----
-
-## DDD takeaway
-
-You now have the full vertical slice for one use case:
-
-```
-HTTP / CLI / message bus
-            │
-            ▼
-      place_order.run
-            │
-   ┌────────┼────────┐
-   ▼        ▼        ▼
-OrderRepo  Order  OrderEvent
-   │
-(in-memory or Postgres adapter)
-```
-
-Each layer has its own type vocabulary. Each can be tested in
-isolation. Each can be replaced without touching the others. The
-aggregate stays pure; the use case orchestrates; the repo abstracts
-storage; the boundary translates.
-
-This is what people mean by **hexagonal architecture** or **ports and
-adapters**. The kata progression has been *building toward this* the
-whole time:
-
-| Kata | What it added |
-|---|---|
-| 1 | Types as proof |
-| 2 | Types that carry operations |
-| 3 | Identity vs value |
-| 4 | Aggregates as consistency boundaries |
-| 5 | Events as facts about transitions |
-| 6 | Repositories as the door between domain and infrastructure |
-
-Bounded contexts (Kata 7) take this slice and copy it. *Ordering* has
-its own `Order`, repo, and use cases. *Shipping* has its own
-`Shipment`, repo, and use cases. They communicate via events, never by
-sharing types.
-
-That's the architecture. The rest is implementation detail.
-
----
-
-## What's next
-
-Kata 7 — **Bounded Contexts.** Same word, different model. The
-*Ordering* context's `Customer` (id + name + email) is not the
-*Marketing* context's `Customer` (id + segment + LTV + last campaign).
-They're related concepts, not the same type. Letting them share a type
-is the single fastest way to wreck a domain model.
-
-The kata: split the existing code into two contexts, define the events
-each emits, and wire them together via an event bus that lets them
-collaborate without sharing types.

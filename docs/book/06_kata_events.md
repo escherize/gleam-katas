@@ -43,8 +43,8 @@ Pattern matching on tuples works the same as anywhere else:
 
 ```gleam
 case order.add_line(o, sku, q, p) {
-  Ok(#(new_order, events)) -> ...
-  Error(reason)            -> ...
+  Ok(#(new_order, events)) -> todo
+  Error(reason)            -> todo
 }
 ```
 

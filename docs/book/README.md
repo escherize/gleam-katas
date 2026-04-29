@@ -14,6 +14,7 @@ enforceable.
 - [05 — Kata 4: Aggregates (`Order`)](05_kata_order.md) — internal types, multi-guard chains, `list.try_map` / `list.try_fold`.
 - [06 — Kata 5: Domain Events](06_kata_events.md) — tuples, `result.try` earning its keep, scenario tests with a command engine.
 - [07 — Kata 6: Repositories](07_kata_repositories.md) — records of functions as interfaces, OTP actors for hidden state, error wrapping across layers.
+- [08 — Kata 7: Bounded Contexts](08_kata_bounded_contexts.md) — folders as context boundaries, asymmetric dependencies, events as the integration contract. Adds a Shipping context that reacts to Ordering.
 
 ## Prerequisites
 
