@@ -1,31 +1,32 @@
-// Kata 4 — Aggregates (Order)
-// Read: docs/book/05_kata_order.md
-// Tests: test/order_test.gleam
-//
-// Kata 5 layers on top: Domain Events.
-// Spec: docs/raw_kata.md (search for "Kata 5: Domain Events").
-//
-// Three operations now return both the new state AND the events that
-// describe what happened:
-//
-//   new       -> #(Order, List(OrderEvent))
-//   add_line  -> Result(#(Order, List(OrderEvent)), OrderError)
-//   place     -> Result(#(Order, List(OrderEvent)), OrderError)
-//
-// Past tense: OrderCreated, LineAdded, OrderPlaced. Events are facts that
-// already happened — failures emit no events.
-//
-// `OrderPlaced` carries the total, so `place` now has to compute the total
-// (which can fail) before it can produce the event. This is where the
-// `use <-` and `result.try` chaining starts really paying off.
-//
-// Reference solution lives on the `solutions` branch.
+//// Kata 4 — Aggregates (Order)
+//// Read: docs/book/05_kata_order.md
+//// Tests: test/order_test.gleam
+////
+//// Kata 5 layers on top: Domain Events.
+//// Spec: docs/raw_kata.md (search for "Kata 5: Domain Events").
+////
+//// Three operations now return both the new state AND the events that
+//// describe what happened:
+////
+////   new       -> #(Order, List(OrderEvent))
+////   add_line  -> Result(#(Order, List(OrderEvent)), OrderError)
+////   place     -> Result(#(Order, List(OrderEvent)), OrderError)
+////
+//// Past tense: OrderCreated, LineAdded, OrderPlaced. Events are facts that
+//// already happened — failures emit no events.
+////
+//// `OrderPlaced` carries the total, so `place` now has to compute the total
+//// (which can fail) before it can produce the event. This is where the
+//// `use <-` and `result.try` chaining starts really paying off.
+////
+//// Reference solution lives on the `solutions` branch.
 
 import customer.{type CustomerId}
 import gleam/list
 import gleam/result
 import money.{type Money}
 
+/// The ID for an order
 pub opaque type OrderId {
   OrderId(value: String)
 }
@@ -146,7 +147,7 @@ pub fn add_line(
   let new_order_line = OrderLine(sku, quantity, unit_price)
   let new_order_lines = [new_order_line, ..order.lines]
   let order = Order(..order, lines: new_order_lines)
-  Ok(#(order, [LineAdded(order.id, sku, quantity, unit_price)]))
+  Ok(#(order, [LineAdded(order_id: order.id, sku:, quantity:, unit_price:)]))
 }
 
 pub fn place(order: Order) -> Result(#(Order, List(OrderEvent)), OrderError) {
