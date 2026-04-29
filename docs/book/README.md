@@ -15,6 +15,7 @@ enforceable.
 - [06 — Kata 5: Domain Events](06_kata_events.md) — tuples, `result.try` earning its keep, scenario tests with a command engine.
 - [07 — Kata 6: Repositories](07_kata_repositories.md) — records of functions as interfaces, OTP actors for hidden state, error wrapping across layers.
 - [08 — Kata 7: Bounded Contexts](08_kata_bounded_contexts.md) — folders as context boundaries, asymmetric dependencies, events as the integration contract. Adds a Shipping context that reacts to Ordering.
+- [09 — Kata 8: Composition Root + HTTP Boundary](09_kata_http_boundary.md) — wiring everything up. Wisp, Mist, the Deps record, error translation as the boundary's only job. The FCIS shell in working code.
 
 ## Prerequisites
 
