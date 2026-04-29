@@ -22,28 +22,32 @@ blank.
 **Per-kata reference branches** snapshot the project after each kata is
 finished, cumulatively:
 
-| Branch         | What's working                                           | `gleam test`      |
-| -------------- | -------------------------------------------------------- | ----------------- |
-| `kata-1-done`  | `email`                                                  | 10 pass / 31 fail |
-| `kata-2-done`  | + `money`                                                | 25 pass / 16 fail |
-| `kata-3-done`  | + `customer`                                             | 25 pass / 16 fail |
-| `kata-4-done`  | + `order` (aggregate, pre-events)                        | 41 pass / 0 fail  |
+| Branch         | What's working                                                              | `gleam test`      |
+| -------------- | --------------------------------------------------------------------------- | ----------------- |
+| `kata-1-done`  | `email`                                                                     | 10 pass / 31 fail |
+| `kata-2-done`  | + `money`                                                                   | 25 pass / 16 fail |
+| `kata-3-done`  | + `customer`                                                                | 25 pass / 16 fail |
+| `kata-4-done`  | + `order` (aggregate, pre-events)                                           | 41 pass / 0 fail  |
+| `kata-5-done`  | + `order` with domain events + scenario engine                              | 56 pass / 0 fail  |
+| `kata-6-done`  | + `order_repo` (OTP actor) + `place_order` use case                         | 66 pass / 0 fail  |
+| `kata-7-done`  | + `shipping/` bounded context (aggregate + repo + cross-context handler)    | 87 pass / 0 fail  |
 
 Use them when you're stuck or want to see how a kata's code looks: `git
 checkout kata-3-done` and inspect `src/customer.gleam`. Each branch is
-the *cumulative* state after that kata, so `kata-4-done` includes
-working code for katas 1-4.
+the *cumulative* state after that kata, so `kata-7-done` includes
+working code for katas 1-7.
 
-`kata-5-done` will be created from your work once you finish kata 5 on
-master. (Until then, the chapter at `docs/book/06_kata_events.md` is the
-reference — but it shows the full solution, so stop at the "Hints"
-section if you want to work it through cold.)
+`kata-8-done` (HTTP boundary) and `kata-9-done` (SQLite) will be
+created when you implement those katas. Their chapters
+(`09_kata_http_boundary.md`, `10_kata_sqlite_repo.md`) describe the
+work.
 
-`solutions` is currently a synonym for `kata-4-done`. Treat the
-`kata-N-done` branches as authoritative going forward.
+`solutions` is the active development branch — has everything
+`kata-7-done` has plus the chapter prose for 8 and 9 and the closing
+"in practice" chapter (`11_in_practice.md`).
 
-The book, the tests, the task specs, and everything in `docs/` are
-shared across branches. The only thing that differs is `src/`.
+The book and all task specs are shared across branches. The only
+thing that differs is `src/`.
 
 ## Roadmap
 
