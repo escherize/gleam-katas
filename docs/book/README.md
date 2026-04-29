@@ -16,6 +16,8 @@ enforceable.
 - [07 — Kata 6: Repositories](07_kata_repositories.md) — records of functions as interfaces, OTP actors for hidden state, error wrapping across layers.
 - [08 — Kata 7: Bounded Contexts](08_kata_bounded_contexts.md) — folders as context boundaries, asymmetric dependencies, events as the integration contract. Adds a Shipping context that reacts to Ordering.
 - [09 — Kata 8: Composition Root + HTTP Boundary](09_kata_http_boundary.md) — wiring everything up. Wisp, Mist, the Deps record, error translation as the boundary's only job. The FCIS shell in working code.
+- [10 — Kata 9: SQLite Repository](10_kata_sqlite_repo.md) — same `OrderRepo` interface, real persistence. `sqlight`, JSON snapshot/restore back door for opaque aggregates, the substitution at the composition root that proves the repo pattern.
+- [11 — Putting It Into Practice](11_in_practice.md) — wrap-up chapter: the bootstrap path, minimum viable DDD, refactor moves as the system grows, signs of over-application, testing pyramid, composition root in production, talking to non-DDD colleagues, what's beyond the foundation.
 
 ## Prerequisites
 
