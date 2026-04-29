@@ -35,33 +35,42 @@ pub type ShipmentError {
 }
 
 pub fn new_id(raw: String) -> Result(ShipmentId, ShipmentError) {
-  todo
+  case raw {
+    "" -> Error(EmptyShipmentId)
+    _ -> Ok(ShipmentId(raw))
+  }
 }
 
 /// Construct a new Shipment in the Pending state.
 /// Total — never fails.
 pub fn new(id: ShipmentId, order_id: OrderId) -> Shipment {
-  todo
+  Shipment(id:, order_id:, status: Pending)
 }
 
 pub fn id(s: Shipment) -> ShipmentId {
-  todo
+  s.id
 }
 
 pub fn order_id(s: Shipment) -> OrderId {
-  todo
+  s.order_id
 }
 
 pub fn status(s: Shipment) -> ShipmentStatus {
-  todo
+  s.status
 }
 
 /// Pending -> Shipped. Reject otherwise.
 pub fn mark_shipped(s: Shipment) -> Result(Shipment, ShipmentError) {
-  todo
+  case s.status {
+    Pending -> Ok(Shipment(id: s.id, order_id: s.order_id, status: Shipped))
+    _ -> Error(CannotShipNonPending)
+  }
 }
 
 /// Shipped -> Delivered. Reject otherwise.
 pub fn mark_delivered(s: Shipment) -> Result(Shipment, ShipmentError) {
-  todo
+  case s.status {
+    Shipped -> Ok(Shipment(id: s.id, order_id: s.order_id, status: Delivered))
+    _ -> Error(CannotDeliverNonShipped)
+  }
 }
