@@ -19,16 +19,23 @@
 ////   (will 404 — no such order until you POST a create endpoint or
 ////    seed via repo, both of which are outside the kata 8 scope)
 
+import gleam/erlang/process
+import mist
+import order_repo
+import web/router
+import wisp
+import wisp/wisp_mist
+
 pub fn main() -> Nil {
-  todo
-  //  1. let assert Ok(repo) = order_repo.in_memory()
-  //  2. let deps = router.Deps(order_repo: repo)
-  //  3. let handle = router.handle(deps, _)   // close over deps
-  //  4. let secret = wisp.random_string(64)
-  //  5. let assert Ok(_) =
-  //       wisp_mist.handler(handle, secret)
-  //       |> mist.new
-  //       |> mist.port(8080)
-  //       |> mist.start
-  //  6. process.sleep_forever()
+  let assert Ok(repo) = order_repo.in_memory()
+  let deps = router.Deps(order_repo: repo)
+  let handle = router.handle(deps, _)
+  // close over deps
+  let secret = wisp.random_string(64)
+  let assert Ok(_) =
+    wisp_mist.handler(handle, secret)
+    |> mist.new
+    |> mist.port(8080)
+    |> mist.start
+  process.sleep_forever()
 }

@@ -22,6 +22,7 @@
 //// Reference solution lives on the `solutions` branch.
 
 import customer.{type CustomerId}
+import gleam/json
 import gleam/list
 import gleam/result
 import money.{type Money}
@@ -36,9 +37,25 @@ type OrderLine {
   OrderLine(sku: String, quantity: Int, unit_price: Money)
 }
 
+fn order_line_to_json(order_line: OrderLine) -> json.Json {
+  let OrderLine(sku:, quantity:, unit_price:) = order_line
+  json.object([
+    #("sku", json.string(sku)),
+    #("quantity", json.int(quantity)),
+    #("unit_price", money.to_json(unit_price)),
+  ])
+}
+
 pub type OrderStatus {
   Draft
   Placed
+}
+
+fn order_status_to_json(order_status: OrderStatus) -> json.Json {
+  case order_status {
+    Draft -> json.string("draft")
+    Placed -> json.string("placed")
+  }
 }
 
 pub opaque type Order {
@@ -48,6 +65,16 @@ pub opaque type Order {
     lines: List(OrderLine),
     status: OrderStatus,
   )
+}
+
+pub fn order_to_json(order: Order) -> json.Json {
+  let Order(id:, customer_id:, lines:, status:) = order
+  json.object([
+    #("id", json.string(id.value)),
+    #("customer_id", json.string(customer.customer_id(customer_id))),
+    #("lines", json.array(lines, order_line_to_json)),
+    #("status", order_status_to_json(status)),
+  ])
 }
 
 pub type OrderError {

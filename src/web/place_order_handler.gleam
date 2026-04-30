@@ -22,9 +22,28 @@
 ////   422 Unprocessable   any other domain rule violation
 ////   500 Server Error    any other repo failure
 
-import web/router.{type Deps}
+import gleam/json
+import order
+import order_repo.{type OrderRepo}
+import place_order
 import wisp.{type Response}
 
-pub fn run(deps: Deps, raw_id: String) -> Response {
-  todo
+pub fn run(repo: OrderRepo, raw_id: String) -> Response {
+  case order.new_id(raw_id) {
+    Error(_) -> wisp.bad_request("Invalid order ID")
+    Ok(order_id) ->
+      case place_order.run(repo, order_id) {
+        Ok(_) -> {
+          let body =
+            [#("order_id", json.string(raw_id))]
+            |> json.object
+            |> json.to_string
+          wisp.json_response(body, 200)
+        }
+        Error(place_order.RepoFailed(order_repo.NotFound)) -> wisp.not_found()
+        Error(place_order.DomainFailed(order.CannotModifyPlacedOrder)) ->
+          wisp.response(409)
+        Error(place_order.DomainFailed(_)) -> wisp.unprocessable_content()
+      }
+  }
 }

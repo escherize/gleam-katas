@@ -12,7 +12,11 @@
 //// Use cases / handlers do the actual work. The router is the
 //// switchboard.
 
+import gleam/http
+import gleam/json
+import order
 import order_repo.{type OrderRepo}
+import web/place_order_handler
 import wisp.{type Request, type Response}
 
 /// The application's dependencies, constructed once in main.gleam and
@@ -36,5 +40,26 @@ pub type Deps {
 ///   POST /orders/:id/place
 /// Anything else → wisp.not_found()
 pub fn handle(deps: Deps, req: Request) -> Response {
-  todo
+  case req.method, wisp.path_segments(req) {
+    http.Post, ["orders", order_id, "place"] ->
+      place_order_handler.run(deps.order_repo, order_id)
+    // http.Post, ["orders"] -> { todo }
+    // create make an order?
+    http.Get, ["orders", id] -> {
+      case order.new_id(id) {
+        Error(_) -> wisp.bad_request("Invalid order ID")
+        Ok(order_id) -> {
+          case deps.order_repo.find(order_id) {
+            Ok(order) ->
+              order
+              |> order.order_to_json
+              |> json.to_string
+              |> wisp.json_response(200)
+            Error(_) -> wisp.not_found()
+          }
+        }
+      }
+    }
+    _, _ -> wisp.not_found()
+  }
 }

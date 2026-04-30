@@ -32,7 +32,7 @@ pub fn run(
   event: OrderEvent,
 ) -> Result(Nil, HandleError) {
   case event {
-    order.OrderPlaced(order_id:, total:) -> {
+    order.OrderPlaced(order_id:, total: _total) -> {
       case repo.find_by_order(order_id) {
         Ok(_) -> Ok(Nil)
         Error(_) -> {

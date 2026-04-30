@@ -43,7 +43,7 @@ fn empty_deps() {
 
 pub fn placing_a_draft_order_returns_200_test() {
   let deps = deps_with_placeable_order()
-  let response = place_order_handler.run(deps, "ORDER-001")
+  let response = place_order_handler.run(deps.order_repo, "ORDER-001")
   assert response.status == 200
 }
 
@@ -52,14 +52,14 @@ pub fn placing_a_draft_order_returns_200_test() {
 pub fn malformed_id_returns_400_test() {
   let deps = empty_deps()
   // empty string is not a valid OrderId (order.new_id rejects it)
-  let response = place_order_handler.run(deps, "")
+  let response = place_order_handler.run(deps.order_repo, "")
   assert response.status == 400
 }
 
 pub fn unknown_order_returns_404_test() {
   let deps = empty_deps()
   // Repo is empty — find will miss.
-  let response = place_order_handler.run(deps, "ORDER-DOES-NOT-EXIST")
+  let response = place_order_handler.run(deps.order_repo, "ORDER-DOES-NOT-EXIST")
   assert response.status == 404
 }
 
@@ -70,16 +70,16 @@ pub fn placing_an_empty_order_returns_422_test() {
   let assert Ok(Nil) = repo.save(empty)
   let deps = router.Deps(order_repo: repo)
 
-  let response = place_order_handler.run(deps, "ORDER-001")
+  let response = place_order_handler.run(deps.order_repo, "ORDER-001")
   assert response.status == 422
 }
 
 pub fn placing_an_already_placed_order_returns_409_test() {
   let deps = deps_with_placeable_order()
   // First call places it successfully.
-  let assert 200 = { place_order_handler.run(deps, "ORDER-001") }.status
+  let assert 200 = { place_order_handler.run(deps.order_repo, "ORDER-001") }.status
   // Second call should hit CannotModifyPlacedOrder → 409 Conflict.
-  let response = place_order_handler.run(deps, "ORDER-001")
+  let response = place_order_handler.run(deps.order_repo, "ORDER-001")
   assert response.status == 409
 }
 

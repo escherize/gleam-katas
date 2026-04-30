@@ -47,3 +47,4 @@ pub fn run(
   use _ <- result.try(repo.save(placed) |> result.map_error(RepoFailed))
   Ok(#(placed, events))
 }
+

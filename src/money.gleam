@@ -1,3 +1,5 @@
+import gleam/json
+
 // A sum type: a Currency is exactly one of these. Like an enum.
 pub type Currency {
   USD
@@ -73,4 +75,19 @@ pub fn multiply(money: Money, factor: Int) -> Result(Money, MoneyError) {
 
 pub fn zero(money: Money) -> Money {
   Money(..money, amount: 0)
+}
+
+pub fn to_json(money: Money) -> json.Json {
+  json.object([
+    #("amount", json.int(money.amount)),
+    #("currency", currency_to_json(money.currency)),
+  ])
+}
+
+fn currency_to_json(currency: Currency) -> json.Json {
+  case currency {
+    USD -> json.string("USD")
+    EUR -> json.string("EUR")
+    GBP -> json.string("GBP")
+  }
 }

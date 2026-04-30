@@ -33,6 +33,10 @@ pub fn new(
   }
 }
 
+pub fn customer_id(customer_id: CustomerId) -> String {
+  customer_id.value
+}
+
 pub fn id(customer: Customer) -> CustomerId {
   customer.id
 }
