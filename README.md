@@ -15,39 +15,13 @@ gleam test
 
 ## How this repo is laid out
 
-**`master`** is where you work — `src/*.gleam` is stubbed with `todo`,
-every type and function the tests reference is declared, the bodies are
-blank.
+Two branches:
 
-**Per-kata reference branches** snapshot the project after each kata is
-finished, cumulatively:
+- **`master`** — where you work. `src/*.gleam` is stubbed with `todo`; every type and function the tests reference is declared, the bodies are blank. Drive failing tests to green.
+- **`solutions`** — the worked-out reference implementation for every kata. Switch to it (`git checkout solutions`) to see how a kata's code can look. The book and tests are the same on both branches; only `src/` differs.
 
-| Branch         | What's working                                                              | `gleam test`      |
-| -------------- | --------------------------------------------------------------------------- | ----------------- |
-| `kata-1-done`  | `email`                                                                     | 10 pass / 31 fail |
-| `kata-2-done`  | + `money`                                                                   | 25 pass / 16 fail |
-| `kata-3-done`  | + `customer`                                                                | 25 pass / 16 fail |
-| `kata-4-done`  | + `order` (aggregate, pre-events)                                           | 41 pass / 0 fail  |
-| `kata-5-done`  | + `order` with domain events + scenario engine                              | 56 pass / 0 fail  |
-| `kata-6-done`  | + `order_repo` (OTP actor) + `place_order` use case                         | 66 pass / 0 fail  |
-| `kata-7-done`  | + `shipping/` bounded context (aggregate + repo + cross-context handler)    | 87 pass / 0 fail  |
-
-Use them when you're stuck or want to see how a kata's code looks: `git
-checkout kata-3-done` and inspect `src/customer.gleam`. Each branch is
-the *cumulative* state after that kata, so `kata-7-done` includes
-working code for katas 1-7.
-
-`kata-8-done` (HTTP boundary) and `kata-9-done` (SQLite) will be
-created when you implement those katas. Their chapters
-(`09_kata_http_boundary.md`, `10_kata_sqlite_repo.md`) describe the
-work.
-
-`solutions` is the active development branch — has everything
-`kata-7-done` has plus the chapter prose for 8 and 9 and the closing
-"in practice" chapter (`11_in_practice.md`).
-
-The book and all task specs are shared across branches. The only
-thing that differs is `src/`.
+The book and all task specs are shared across branches. The only thing
+that differs is `src/`.
 
 ## Roadmap
 
@@ -63,7 +37,7 @@ thing that differs is `src/`.
 1. Read the relevant chapter in `docs/book/`.
 2. Open the corresponding `src/*.gleam` file. Replace each `todo` with a real implementation.
 3. Run `gleam test` until the tests for that kata pass.
-4. Compare your solution to the matching `kata-N-done` branch (`git diff master kata-3-done -- src/customer.gleam`).
+4. Compare your solution to the reference on the `solutions` branch (`git diff master solutions -- src/customer.gleam`).
 5. Move to the next kata.
 
 The tests are the spec. If your code makes them pass, you've solved the
