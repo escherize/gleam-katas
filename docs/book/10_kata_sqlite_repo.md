@@ -132,6 +132,58 @@ The decoder type is `decode.Decoder(t)`, built by chaining
 `decode.field` calls inside a `use` block. The chapter's hints walk
 through what an `Order`-shaped decoder looks like.
 
+#### Tip: the LSP can write the boilerplate for you
+
+Recent versions of the Gleam language server expose **"Generate
+to-json function"** and **"Generate decoder"** as code actions. Put
+your cursor on a type definition (the `pub type Foo { ... }` line),
+trigger code actions in your editor (`⌘.` / `Ctrl+.` in VS Code,
+`<space>a` in Helix, `<leader>ca` in most nvim setups), and pick the
+generator. The LSP writes a `pub fn foo_to_json` and / or
+`pub fn foo_decoder` next to the type, populated from the field
+names and types it can see.
+
+Caveats:
+
+- Only works on the type *definition*, in the file that owns it.
+  Outside that module, types are opaque and the LSP can't reach the
+  fields.
+- Generates encoders/decoders for the immediate type only. Nested
+  types referenced in the definition (e.g., `Money`, `Currency`,
+  `OrderLine`) need their own generated functions — the generator
+  emits `todo` placeholders for types whose encoder/decoder doesn't
+  yet exist. You'll be running the action ~5 times to cover the full
+  Order tree.
+- Generated code is starting-point quality. Read it, rename / restyle
+  to match your conventions before committing.
+
+#### And: "no magic" is the feature, not the cost
+
+Other ecosystems do this with derive macros (`#[derive(Serialize)]`),
+annotations (`@JsonProperty`), or typeclass instances (`instance
+ToJSON`). All of these *hide* the encoder — it's generated at compile
+time or via reflection, and you can't see it without expanding macros
+or stepping through reflection metadata.
+
+Gleam's choice — write the function, or have the LSP generate it
+into your source — costs you a one-time scroll past ~10 lines per
+type. In return:
+
+- The encoder is **visible code** you can read, grep, and step
+  through. When `to_json` produces wrong output, the bug is in plain
+  text in your file, not buried in macro expansion.
+- Field renames / additions surface as **compile errors** in your
+  encoder, not as silent serialization drift.
+- Different types can have different encoding strategies (snake_case
+  vs camelCase, omit-empty vs always-include) without invoking
+  decorator soup — they're just different functions.
+- The encoder works the same whether the bytes go to JSON, MessagePack,
+  log lines, or test fixtures. **No format-specific magic to learn.**
+
+The tax is real (more typing) and the benefit is real (no surprises).
+Most Gleam programmers come to like it. Worth knowing the LSP exists
+to take the keystroke pain out of the boilerplate.
+
 ### The snapshot/restore back door pattern
 
 Add these to `src/order.gleam`:
