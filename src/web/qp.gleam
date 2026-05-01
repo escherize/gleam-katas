@@ -5,6 +5,7 @@
 //// `use <-` line at the call site, with sensible 400 responses for
 //// missing or duplicated keys.
 
+import gleam/int
 import gleam/list
 import wisp.{type Response}
 
@@ -50,4 +51,18 @@ pub fn all(
   then: fn(List(String)) -> Response,
 ) -> Response {
   then(list.key_filter(qp, key))
+}
+
+/// Require exactly one Int-parseable value for `key`. 400 on missing,
+/// duplicated, or unparseable. Same `use <-` shape as `require_one`.
+pub fn require_int(
+  qp: List(#(String, String)),
+  key: String,
+  then: fn(Int) -> Response,
+) -> Response {
+  use raw <- require_one(qp, key)
+  case int.parse(raw) {
+    Ok(n) -> then(n)
+    Error(_) -> wisp.bad_request("query parameter " <> key <> " must be an integer")
+  }
 }

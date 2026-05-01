@@ -12,10 +12,9 @@
 //// Use cases / handlers do the actual work. The router is the
 //// switchboard.
 
-import customer
 import gleam/http
-import order
 import order_repo.{type OrderRepo}
+import web/add_line_handler
 import web/create_order_handler
 import web/get_order_handler
 import web/place_order_handler
@@ -48,10 +47,18 @@ pub fn handle(deps: Deps, req: Request) -> Response {
     http.Post, ["orders"] -> {
       use raw_cid <- qp.require_one(wisp.get_query(req), "customer_id")
       use raw_order_id <- qp.require_one(wisp.get_query(req), "order_id")
-      create_order_handler.run(deps.order_repo, raw_cid, raw_order_id)
+      create_order_handler.run(deps.order_repo, raw_order_id, raw_cid)
     }
     http.Post, ["orders", id, "place"] ->
       place_order_handler.run(deps.order_repo, id)
+    http.Post, ["orders", id, "lines"] -> {
+      let qp_list = wisp.get_query(req)
+      use sku <- qp.require_one(qp_list, "sku")
+      use quantity <- qp.require_int(qp_list, "quantity")
+      use amount <- qp.require_int(qp_list, "amount")
+      use currency <- qp.require_one(qp_list, "currency")
+      add_line_handler.run(deps.order_repo, id, sku, quantity, amount, currency)
+    }
     _, _ -> wisp.not_found()
   }
 }
