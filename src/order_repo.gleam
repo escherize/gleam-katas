@@ -43,12 +43,14 @@ pub type OrderRepo {
   OrderRepo(
     find: fn(OrderId) -> Result(Order, RepoError),
     save: fn(Order) -> Result(Nil, RepoError),
+    list_all: fn() -> Result(List(Order), RepoError),
   )
 }
 
 pub type Msg {
   Find(id: OrderId, reply_to: Subject(Result(Order, RepoError)))
   Save(order: Order, reply_to: Subject(Result(Nil, RepoError)))
+  ListAll(reply_to: Subject(Result(List(Order), RepoError)))
 }
 
 fn handle_msg(
@@ -66,6 +68,10 @@ fn handle_msg(
       process.send(reply_to, Ok(Nil))
       actor.continue(new_state)
     }
+    ListAll(reply_to:) -> {
+      process.send(reply_to, Ok(dict.values(store)))
+      actor.continue(store)
+    }
   }
 }
 
@@ -80,6 +86,7 @@ pub fn in_memory() -> Result(OrderRepo, actor.StartError) {
     OrderRepo(
       find: fn(id) { process.call(pid, 100, fn(subject) { Find(id, subject) }) },
       save: fn(order) { process.call(pid, 100, Save(order, _)) },
+      list_all: fn() { process.call(pid, 100, ListAll) },
     ),
   )
 }

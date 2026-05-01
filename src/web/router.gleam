@@ -17,6 +17,7 @@ import order_repo.{type OrderRepo}
 import web/add_line_handler
 import web/create_order_handler
 import web/get_order_handler
+import web/list_orders_handler
 import web/place_order_handler
 import web/qp
 import wisp.{type Request, type Response}
@@ -43,14 +44,16 @@ pub type Deps {
 /// Anything else → wisp.not_found()
 pub fn handle(deps: Deps, req: Request) -> Response {
   case req.method, wisp.path_segments(req) {
-    http.Get, ["orders", id] -> get_order_handler.run(deps.order_repo, id)
+    // create
     http.Post, ["orders"] -> {
-      use raw_cid <- qp.require_one(wisp.get_query(req), "customer_id")
-      use raw_order_id <- qp.require_one(wisp.get_query(req), "order_id")
+      let qp_list = wisp.get_query(req)
+      use raw_order_id <- qp.require_one(qp_list, "order_id")
+      use raw_cid <- qp.require_one(qp_list, "customer_id")
       create_order_handler.run(deps.order_repo, raw_order_id, raw_cid)
     }
-    http.Post, ["orders", id, "place"] ->
-      place_order_handler.run(deps.order_repo, id)
+    // read
+    http.Get, ["orders", id] -> get_order_handler.run(deps.order_repo, id)
+    // modify
     http.Post, ["orders", id, "lines"] -> {
       let qp_list = wisp.get_query(req)
       use sku <- qp.require_one(qp_list, "sku")
@@ -59,6 +62,12 @@ pub fn handle(deps: Deps, req: Request) -> Response {
       use currency <- qp.require_one(qp_list, "currency")
       add_line_handler.run(deps.order_repo, id, sku, quantity, amount, currency)
     }
+    // finalize
+    http.Post, ["orders", id, "place"] ->
+      place_order_handler.run(deps.order_repo, id)
+    // list
+    http.Get, ["orders"] -> list_orders_handler.run(deps.order_repo)
+
     _, _ -> wisp.not_found()
   }
 }
