@@ -85,6 +85,25 @@ change together aren't really separate.** If `customer_billing.gleam`
 and `customer_marketing.gleam` always get touched in the same PR,
 merge them.
 
+### A note on the missing customer endpoints
+
+The kata's HTTP boundary takes `customer_id` as a string and never
+checks whether the customer exists. There are no `POST /customers`
+or `GET /customers/:id` endpoints, even though the `Customer` type
+exists in the codebase (`src/customer.gleam`). We skipped them to
+keep the kata short.
+
+If you want to add them, three options for how Ordering should treat
+the cross-context reference:
+
+- **(a) Pre-validation** — call a `CustomerRepo.find` before accepting an order; reject unknown ids.
+- **(b) Async subscription** — Customer publishes `CustomerCreated`; Ordering keeps a local index.
+- **(c) Trust by default** — accept any id, reconcile via a periodic job if needed.
+
+Pick one explicitly when it matters. The kata implements (c) by
+omission — fine for a learning project, worth being deliberate about
+for anything that ships.
+
 ---
 
 ## Refactor moves as the system grows
