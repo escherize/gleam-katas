@@ -36,7 +36,6 @@ pub fn run(
             Error(add_line.DomainFailed(order.CannotModifyPlacedOrder)) ->
               wisp.response(409)
             Error(add_line.DomainFailed(_)) -> wisp.unprocessable_content()
-            Error(add_line.RepoFailed(_)) -> wisp.internal_server_error()
           }
       }
   }

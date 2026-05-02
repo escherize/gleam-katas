@@ -206,3 +206,27 @@ pub fn total(order: Order) -> Result(Money, OrderError) {
       |> result.replace_error(InvalidOrderTotal)
   }
 }
+
+pub type LineSnapshot {
+  LineSnapshot(sku: String, quantity: Int, unit_price: Money)
+}
+
+pub type OrderSnapshot {
+  OrderSnapshot(
+    id: OrderId,
+    customer_id: CustomerId,
+    lines: List(LineSnapshot),
+    status: OrderStatus,
+  )
+}
+
+pub fn restore(snap: OrderSnapshot) -> Order {
+  let OrderSnapshot(id:, customer_id:, lines:, status:) = snap
+  let order_lines =
+    lines
+    |> list.map(fn(line) {
+      let LineSnapshot(sku:, quantity:, unit_price:) = line
+      OrderLine(sku, quantity, unit_price)
+    })
+  Order(id, customer_id, order_lines, status)
+}
