@@ -1,4 +1,4 @@
-# 11 — Putting It Into Practice
+# 12 — Putting It Into Practice
 
 The katas teach the patterns. Knowing patterns isn't the same as knowing
 when to apply them, when to skip them, and how to talk about them with
