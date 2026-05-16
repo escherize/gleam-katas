@@ -44,6 +44,8 @@ pub fn run(repo: OrderRepo, raw_id: String) -> Response {
         Error(place_order.DomainFailed(order.CannotModifyPlacedOrder)) ->
           wisp.response(409)
         Error(place_order.DomainFailed(_)) -> wisp.unprocessable_content()
+        Error(place_order.RepoFailed(order_repo.StorageError(_))) ->
+          wisp.unprocessable_content()
       }
   }
 }

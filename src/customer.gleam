@@ -1,8 +1,13 @@
 import email.{type Email}
+import gleam/dynamic/decode
 import gleam/string
 
 pub opaque type CustomerId {
   CustomerId(value: String)
+}
+
+pub fn customer_id_decoder() -> decode.Decoder(CustomerId) {
+  decode.string |> decode.map(fn(value) { CustomerId(value:) })
 }
 
 pub opaque type Customer {

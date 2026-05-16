@@ -20,6 +20,7 @@ pub fn run(repo: OrderRepo, raw_id: String) -> Response {
           |> order.order_to_json
           |> json.to_string
           |> wisp.json_response(200)
+        Error(order_repo.StorageError(_)) -> wisp.unprocessable_content()
       }
   }
 }

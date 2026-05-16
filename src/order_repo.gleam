@@ -37,6 +37,7 @@ import order.{type Order, type OrderId}
 
 pub type RepoError {
   NotFound
+  StorageError(String)
 }
 
 pub type OrderRepo {

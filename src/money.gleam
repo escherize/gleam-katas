@@ -1,3 +1,4 @@
+import gleam/dynamic/decode
 import gleam/json
 
 // A sum type: a Currency is exactly one of these. Like an enum.
@@ -7,11 +8,35 @@ pub type Currency {
   GBP
 }
 
+fn currency_to_json(currency: Currency) -> json.Json {
+  case currency {
+    USD -> json.string("u_s_d")
+    EUR -> json.string("e_u_r")
+    GBP -> json.string("g_b_p")
+  }
+}
+
+fn currency_decoder() -> decode.Decoder(Currency) {
+  use variant <- decode.then(decode.string)
+  case variant {
+    "u_s_d" -> decode.success(USD)
+    "e_u_r" -> decode.success(EUR)
+    "g_b_p" -> decode.success(GBP)
+    _ -> decode.failure(USD, "Currency")
+  }
+}
+
 // `opaque` hides the Money(...) constructor outside this module.
 // Callers can't build a Money directly — they must go through `new`,
 // so any Money in the wild is guaranteed valid.
 pub opaque type Money {
   Money(amount: Int, currency: Currency)
+}
+
+pub fn money_decoder() -> decode.Decoder(Money) {
+  use amount <- decode.field("amount", decode.int)
+  use currency <- decode.field("currency", currency_decoder())
+  decode.success(Money(amount:, currency:))
 }
 
 // Errors are values, not exceptions. Functions return `Result(Ok, Error)`
@@ -82,12 +107,4 @@ pub fn to_json(money: Money) -> json.Json {
     #("amount", json.int(money.amount)),
     #("currency", currency_to_json(money.currency)),
   ])
-}
-
-fn currency_to_json(currency: Currency) -> json.Json {
-  case currency {
-    USD -> json.string("USD")
-    EUR -> json.string("EUR")
-    GBP -> json.string("GBP")
-  }
 }

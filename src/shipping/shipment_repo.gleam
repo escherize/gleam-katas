@@ -23,6 +23,7 @@ import shipping/shipment.{type Shipment, type ShipmentId}
 
 pub type RepoError {
   NotFound
+  StorageError(String)
 }
 
 pub type ShipmentRepo {
