@@ -1,22 +1,18 @@
-# 04 — Kata 3: Entities (`Customer`)
+# 04. Kata 3: Entities (`Customer`)
 
 ## Concept
 
-The conceptual shift: a customer named "Alice" who renames to "Alice Smith"
-tomorrow is *the same customer*. Identity persists; attributes change.
+A customer named "Alice" who renames to "Alice Smith" tomorrow remains
+the same customer, because identity persists while attributes change.
 
-Equality is by **ID**, not by value. Gleam's `==` will give you the wrong
-answer if you naively use it on entities — two snapshots of the same
-customer at different moments will compare unequal because their fields
-differ, but they represent one entity.
+Equality runs on the ID. Gleam's `==` lies about entities; two snapshots
+of one customer at different moments compare unequal because their fields
+differ, though the person is one. Entities want an explicit ID type and a
+`same_X` function that compares by ID, so `==` stays out of entity code.
 
-The fix is structural: give entities an explicit **ID type**, and don't
-compare entities with `==` at all — write a `same_X` function that compares
-by ID.
-
-This is the moment value objects start paying off. `Email` from Kata 1 is
-a building block here — `Customer` *contains* an `Email`, and there's no
-re-validation at the customer layer because the type already carries proof.
+Value objects start paying rent here. `Customer` *contains* the `Email`
+from Kata 1, so the customer layer skips re-validation; the type already
+carries the proof.
 
 ---
 
@@ -28,16 +24,16 @@ re-validation at the customer layer because the type already carries proof.
 import email.{type Email}
 ```
 
-This brings the *type* `Email` into scope by bare name (so you can write
-`email: Email` instead of `email: email.Email`). Functions are still
-namespaced (`email.new(...)`), only the type alias is unqualified.
+This pulls the *type* `Email` into scope by bare name, so the annotation
+reads `email: Email` rather than `email: email.Email`. Functions still need
+their namespace (`email.new(...)`), since only the type alias travels
+unqualified.
 
-### One-arg `use` — `result.try`
+### One-arg `use`: `result.try`
 
-Now we have two layers of types: `Customer` is built from `CustomerId` and
-`Email`, both smart-constructed. A boundary function that turns raw
-strings into a `Customer` has to chain three potentially-failing
-constructions:
+`Customer` composes a `CustomerId` and an `Email`, both of which run
+through smart constructors, so a boundary function that turns raw strings
+into a `Customer` chains three constructions that can each fail:
 
 ```gleam
 case email.new(raw_email) {
@@ -49,7 +45,7 @@ case email.new(raw_email) {
 }
 ```
 
-This is the pyramid `use` was made to flatten:
+`use` flattens that pyramid:
 
 ```gleam
 use email <- result.try(email.new(raw) |> result.map_error(InvalidEmail))
@@ -57,16 +53,14 @@ use id <- result.try(new_id(raw_id))
 new(id, raw_name, email)
 ```
 
-`result.try(r, fn(value) { ... })` runs the callback only if `r` is `Ok`.
-If `r` is `Error`, the whole expression returns that error. With `use`,
-the call site reads as a sequence of validations.
+`result.try(r, fn(value) { ... })` runs the callback only when `r` is `Ok`;
+on `Error` the expression short-circuits to that error, so `use` turns
+the call site into a readable sequence of validations. `result.map_error(f)`
+rewraps an inner error to fit the outer error type when the two don't line
+up.
 
-`result.map_error(f)` is for when error types don't line up — you wrap the
-inner error so it fits the outer type.
-
-You won't strictly need this for the minimal version of Kata 3, but it's
-the natural next step once you start composing types. (See `docs/use.md`
-for the deeper treatment.)
+The minimal Kata 3 won't force you onto this, but you'll reach for it the
+moment you start composing types. See `docs/use.md` for the deeper treatment.
 
 ---
 
@@ -100,66 +94,61 @@ pub fn same_customer(a: Customer, b: Customer) -> Bool
 
 Rules:
 
-- `CustomerId` is its own opaque type. **Never use raw strings as IDs in domain code.**
+- `CustomerId` is its own opaque type; never use raw strings as IDs in domain code.
 - Reject empty names and empty ID strings.
 - `rename` and `change_email` return a *new* `Customer` with the same ID.
 - `same_customer` compares by ID only.
 
-The tests in `test/customer_test.gleam` are the spec. (Currently empty —
-add cases as you implement.)
+The tests in `test/customer_test.gleam` are the spec. The file ships empty,
+so cases land as the implementation lands.
 
 ---
 
-## Hints — what to do
+## Hints
 
-1. **This is mostly Kata 1 applied twice.** `CustomerId` is an opaque value object with its own smart constructor (`new_id`). `Customer` is an opaque entity whose constructor (`new`) takes already-validated value objects. Two layers, same pattern.
-2. **`change_email` doesn't return `Result`. Why?** Because its only argument that could be invalid is `new_email`, which is *already* an `Email`, *already* validated. There is nothing to fail. Notice how the value-object layer eliminates checks at the entity layer.
-3. **`rename` does return `Result`. Why?** Because `new_name: String` is raw input — it could be empty. Route it through `new` to reuse the empty-name check. Don't write the check twice.
-4. **For `same_customer`, plain `==` on `CustomerId` is the right tool.** It works because `CustomerId` is an opaque value object — the only way to construct one is through `new_id`, so any two `CustomerId`s in your program are validated. The opacity gives you trustworthy equality.
-5. **Don't add fields you don't need.** No `created_at`, no `version`, no `address`. The kata is about the entity-vs-value distinction; everything else is noise.
-6. **The strict `new` takes pre-validated values.** Don't accept raw strings here. There's a separate place (a "boundary factory") for taking raw input and producing a customer; we'll see it in `docs/use.md`. The split keeps each function honest about what it can fail on.
+1. Treat this as Kata 1 applied twice. `CustomerId` is an opaque value object with its own smart constructor, `new_id`, and `Customer` is an opaque entity whose `new` takes value objects that already carry their proofs.
+2. `change_email` returns `Customer` rather than `Result` because its one substantive argument, `new_email`, already carries `Email`'s proof, so nothing remains to fail on. The value-object layer pays out.
+3. `rename` does return `Result`, because `new_name: String` is raw input that can still be empty. Route it through `new` so the empty-name check lives in one place.
+4. For `same_customer`, plain `==` on `CustomerId` is the right tool. `CustomerId` is opaque and only constructable through `new_id`, so every `CustomerId` in your program already cleared the constructor, and opacity buys you trustworthy equality.
+5. Skip the extra fields (`created_at`, `version`, address, whatever else is tempting). The kata wants the entity-vs-value distinction; everything else is noise.
+6. The strict `new` takes values that already carry their proofs, so don't let raw strings through. Raw input belongs in a separate boundary factory that pipelines the three smart constructors together; see `docs/use.md`. Splitting the two keeps each function honest about what it can fail on.
 
 ---
 
 ## Walk-through
 
-**Funneling `rename` through `new`** — same instinct from `Money`. `rename`
-doesn't write its own validation; it constructs a new customer through the
-smart constructor, which already checks the name. One free invariant
-check, one place to maintain it.
+Funnel `rename` through `new`, same instinct as `Money`. The function
+writes no validation of its own and hands off to the smart constructor,
+which already checks the name, so the invariant lives in one place.
 
-**`Email` is now a building block.** No re-validating an email string here
-— the type carries proof. This compounding is why value objects pay off;
-entities get to assume their parts are well-formed.
+`Email` arrives carrying its proof, so the entity layer skips the string
+check; the type already establishes the invariant. Compounding like
+this earns value objects their keystrokes.
 
-**Why `same_customer` and not just `==`.** `alice_v1 == alice_v2` after a
-rename returns `False` (the structs differ structurally), but domain-wise
-they're the same person. Naming the function forces callers to ask:
-structural equality or identity equality? For entities, almost always
-identity.
-
-Because `CustomerId` is opaque and constructed only via `new_id`, comparing
-`a.id == b.id` is safe — the IDs you're comparing are guaranteed to be
-well-formed.
+`same_customer` carries the other half. After a rename, `alice_v1 == alice_v2`
+returns `False` because the structs differ, yet domain-wise they name one
+person, and a named function makes the caller commit to identity equality
+instead of stumbling into structural equality by reflex. `CustomerId` stays
+opaque and only `new_id` builds one, so `a.id == b.id` is safe; both IDs
+went through the constructor.
 
 ---
 
 ## Critique
 
-- `string.length(raw) == 0` is functionally correct but `string.is_empty(raw)` is cheaper (no traversal) and reads more obviously as the intent. The `new_id` solution above uses `is_empty`; `new` still uses `length`. Pick one and be consistent.
-- `new(... name: "   ")` succeeds as written — whitespace-only name passes. Whether that's a bug depends on the domain. The deeper point: every place a string enters your domain is a chance for invariants to slip in.
-- The strict `new` is good design but inconvenient when you genuinely have raw input from an HTTP boundary. The fix is a separate `from_raw` boundary factory that calls `email.new`, `new_id`, and `new` in a `use`-chain. See `docs/use.md` §4 for the worked example.
+- `string.length(raw) == 0` works, but `string.is_empty(raw)` is cheaper (no traversal) and reads as the intent. `new_id` above uses `is_empty` while `new` still uses `length`; pick one.
+- `new(... name: "   ")` succeeds as written, because whitespace-only names pass the check. Whether that counts as a bug depends on the domain, and every spot a string enters your domain is a place for invariants to leak.
+- The strict `new` is good design that grates when you genuinely have raw input from an HTTP handler. Add a separate `from_raw` boundary factory that chains the three smart constructors in a `use`-chain; `docs/use.md` §4 has the worked example.
 
 ---
 
 ## DDD takeaway
 
-You have a `Customer` whose attributes can change but whose identity is
-permanent and trusted. `rename` and `change_email` are *state transitions*
-— each produces a new immutable value representing the next moment in that
-customer's life.
+You have a `Customer` whose attributes drift while its identity stays
+fixed and trusted. `rename` and `change_email` are state transitions. Each produces a new
+immutable value, the next moment in that customer's life.
 
-In an event-sourced system each transition would emit a `CustomerRenamed`
-or `EmailChanged` event, and the customer's full history would be
-reconstructible by replaying them. You're already structured for that
-without trying. (Kata 5 takes this from theory to working code.)
+An event-sourced system would emit a `CustomerRenamed` or `EmailChanged`
+event on each transition, and replaying them would reconstruct the
+customer's history. Your design already fits that mold without trying; Kata 5
+turns the theory into working code.

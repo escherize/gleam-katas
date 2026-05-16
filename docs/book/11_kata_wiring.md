@@ -1,83 +1,62 @@
-# 11 — Kata 10: Wiring and Configuration
+# 11. Kata 10: Wiring and Configuration
 
-## Concept
+Kata 9 built and tested the SQLite adapter in isolation. Time to hook it up.
 
-You built the SQLite adapter in kata 9 and tested it in isolation. It
-works. It's also sitting on a shelf. The composition root in
 `gleamlang_katas.gleam` still says:
 
 ```gleam
 let assert Ok(repo) = order_repo.in_memory()
 ```
 
-That single line is the part of the architecture you haven't actually
-exercised. The whole point of the repository pattern was *swap the
-implementation without touching anything downstream* — and you've never
-actually performed the swap.
+Two `OrderRepo`s exist now, one in an actor and one over sqlite, so the
+implementation swaps without touching anything downstream.
 
-This kata does it. Twice:
+To test the SQLite wiring, save an order, restart the server, and `GET` the
+order back. The `OrderRepo` choice also becomes configurable from the command
+line.
 
-1. **Wire the SQLite adapter in.** Replace one constructor call with
-   another. Verify orders persist across `gleam run` restarts. *That* is
-   when the architecture becomes real to you — until you've watched data
-   survive a process exit, the in-memory and SQLite implementations are
-   indistinguishable in practice.
+Either via:
 
-2. **Make the choice runtime configurable.** A single deployable that
-   reads `ORDER_REPO=memory|sqlite` from the environment and constructs
-   the right adapter. This is what "configuration as a typed value"
-   looks like in working code — and it forces three small design
-   decisions: sum type vs string flag, factory function vs inline
-   construction, and where to fail fast.
+```
+ORDER_REPO=in_memory
+```
+or
+```
+ORDER_REPO=sqlite
+ORDER_DB=my_orders.db
+```
 
-## Why this is more than a one-line change
+## New Tricks
 
-The diff is small. The design content isn't.
-
-Kata 9 taught you to *build* an adapter. This kata teaches you to
-*choose between adapters at runtime* — a different skill. The factory
-pattern, the `Config` value object, env-driven backend selection,
-error-type unification at the composition root — these are the things
-every production Gleam app needs and that the book hasn't covered yet.
-
-There's also a payoff moment worth slowing down for: the first time
-you watch data survive `kill %1; gleam run`. The architecture diagram
-you've been drawing in your head for nine katas finally has a running
-counterexample to "in-memory state is fine, what could go wrong?"
-
----
-
-## New Gleam fundamentals
-
-Three small additions.
-
-### `envoy` — env var access
+### `envoy` handles env var access
 
 ```gleam
 import envoy
 
-envoy.get("ORDER_REPO")  // -> Result(String, Nil)
+envoy.get("MY_ENV_VAR")  // -> Result(String, Nil)
 ```
 
-That's the entire API surface that matters. `Result(_, Nil)` because
-"env var not set" is the only failure mode, and it has no detail
-beyond *not set*. The standard idiom for "default if missing":
+`envoy.get` returns `Ok(String)` when the env var has a value, and `Error(Nil)` when it doesn't.
+
+<!-- this can be a "tip" callout or whatever it's called:  -->
+> Remember: 
+> Environment variables always arrive as strings
+
+Result-handling composes with it the usual way:
 
 ```gleam
 envoy.get("PORT")
-|> result.try(int.parse)
-|> result.unwrap(8080)
+|> result.try(int.parse) // it should become an int
+|> result.unwrap(8080) // default value
 ```
 
-Read → parse → fall back. Each step is one line.
-
-### Sum types as configuration
+### Organizing the Config
 
 The wrong shape:
 
 ```gleam
-pub type Config {
-  Config(repo_kind: String, db_path: String)
+pub type Bad_Config {
+  Bad_Config(repo_kind: String, db_path: String)
   //     ^^^^^^^^ stringly typed; needs validation everywhere it's used
 }
 ```
@@ -95,23 +74,33 @@ pub type Config {
 }
 ```
 
-After `load_config` returns, no other code has to ask "is the string
-`repo_kind` actually one of the known values?" That question was
-answered once, at the parse boundary, and the type system carries the
-answer the rest of the way. The `db_path` only exists when the variant
-is `Sqlite` — meaning you can't accidentally read it when the backend
-is `InMemory`.
+`Bad_Config` is harder to use, since the type system cannot help you set it up
+correctly. You'd have to scan the code for valid values of `repo_kind`.
 
-**This is the same shape as parsing HTTP input.** Untyped strings come
-in at the edge. A parser turns them into typed values. Typed values
-flow through the system. The HTTP boundary does it for request bodies;
-the config boundary does it for env vars. Same idea, different input
-source.
+Reading the `Config` definition explains what it can be, and hints at how
+callers will use it. The `db_path` only exists when the variant is `Sqlite`,
+so you can't accidentally read it when the backend is `InMemory`.
 
-### The factory function pattern
+The shape mirrors HTTP input parsing. Untyped strings arrive, a parser turns
+them into typed values, and the typed values flow through the system.
 
-One function that takes the typed backend choice and produces a
-running adapter:
+> Note:
+> Extending this to connect to postgres adds the connection uri, or the
+> host_name and db name, as fields of a Postgres variant of RepoBackend.
+> Something like:
+
+```gleam
+pub type ExtendedRepoBackend {
+  InMemory
+  Sqlite(path: String)
+  PostgresURI(uri: String)
+  PostgresParts(host_name: String, db_name: String, ...)
+}
+```
+
+### Config -> Repo
+
+A config value passes into a function that produces a running adapter.
 
 ```gleam
 fn build_repo(backend: RepoBackend) -> Result(OrderRepo, String) {
@@ -121,6 +110,7 @@ fn build_repo(backend: RepoBackend) -> Result(OrderRepo, String) {
       |> result.map_error(string.inspect)
 
     Sqlite(path) -> {
+      // opening a connection can fail:
       use conn <- result.try(
         sqlight.open(path) |> result.map_error(string.inspect)
       )
@@ -130,19 +120,10 @@ fn build_repo(backend: RepoBackend) -> Result(OrderRepo, String) {
 }
 ```
 
-Three things to internalize:
-
-1. **One function, one decision.** `build_repo` is the *only* place in
-   the codebase that knows how to construct any backend. Add a Postgres
-   adapter later, you change one function. Nothing else.
-2. **Error types are unified to `String` here.** `actor.StartError`
-   and `sqlight.Error` don't share an ancestor; the composition root is
-   the natural place to flatten them. `string.inspect` is pragmatic at
-   this layer — the only thing that consumes the error is the human
-   reading the panic message.
-3. **`use ... <- result.try` chains adapter construction.** Opening the
-   connection can fail. Building the repo from the connection can fail.
-   Both errors flow out the same channel.
+`Error` types collapse to `String` here. `actor.StartError` and `sqlight.Error`
+don't share an ancestor, so the composition root flattens them. `string.inspect`
+works at this layer, since the only consumer of the error is a human (or agent)
+reading the panic message.
 
 ---
 
@@ -156,20 +137,30 @@ gleam add envoy
 
 ### 2. Add `RepoBackend` and `Config` types
 
-In `gleamlang_katas.gleam` (the composition root). Sum type for the
-backend choice, record for the bundled config.
+In `gleamlang_katas.gleam` read the config, and turn it into an `OrderRepo`.
 
 ### 3. Implement `load_config`
 
-Read `ORDER_REPO` and `ORDER_DB` (and `PORT` while you're there). Map
-to typed values. Defaults: `InMemory` if `ORDER_REPO` is unset or
-unrecognized, `"orders.db"` if `ORDER_DB` is unset, `8080` if `PORT`
-is unset or unparseable.
+#### Env vars
+
+Read `ORDER_REPO` and `ORDER_DB`, and `PORT` into typed values.
+
+##### Order Repo
+
+Default to `InMemory` when `ORDER_REPO` is unset. Crash if the value is set
+and invalid.
+
+`ORDER_DB` defaults to `"orders.db"`.
+
+##### Port
+
+Default Port: `8080`. An unparsable value should crash.
 
 ### 4. Implement `build_repo`
 
-The factory above. Takes a `RepoBackend`, returns
-`Result(OrderRepo, String)`.
+The factory given above, but try doing it without looking.
+
+Its signature is `fn(RepoBackend) -> Result(OrderRepo, String)`
 
 ### 5. Update `main`
 
@@ -193,15 +184,14 @@ pub fn main() -> Nil {
 
 ```
 orders.db
-orders.db-journal
-orders.db-wal
-orders.db-shm
+orders.db*
 ```
 
-Don't commit the database. SQLite produces sidecar files (WAL, shared
-memory) in some modes; ignore them all.
+Don't commit the database. The glob also covers SQLite's sidecar files.
 
 ### 7. Verify persistence
+
+Once it's hooked up, test by hand:
 
 ```sh
 # Start with SQLite, create an order
@@ -216,9 +206,10 @@ curl http://localhost:8080/orders/ORDER-001  # still there
 kill %1
 ```
 
-If the second `curl` returns the order, the kata is done. If it
-returns 404, something in your save path isn't actually writing to
-disk. Sanity-check by inspecting the SQLite file directly:
+If the second `curl` returns the order, the wiring is done. A 404 means
+something in the save path isn't writing to disk.
+
+Inspect the SQLite db file directly to confirm:
 
 ```sh
 sqlite3 orders.db 'SELECT id, length(data) FROM orders;'
@@ -226,46 +217,44 @@ sqlite3 orders.db 'SELECT id, length(data) FROM orders;'
 
 ---
 
-## Hints — what to do
+## Hints: what to do
 
-1. **Read env vars at the top of `main`, once.** Not scattered around
-   the codebase. The pattern `envoy.get` inside a handler or a use case
-   means configuration has leaked downward. Pull it back to
-   `load_config` and pass typed values through `Deps`.
+1. Read env vars at the top of `main`, once, not scattered around the
+   codebase. `envoy.get` inside a handler or a use case means
+   configuration has leaked downward. Pull it back to `load_config`
+   and pass typed values through `Deps`.
 
-2. **Defaults live in `load_config`, not in `build_repo`.** By the time
-   `build_repo` runs, the backend choice is already decided. If
-   `build_repo` had to handle "no backend specified" it would have two
-   jobs (parsing + constructing); separating them keeps each function
+2. Defaults live in `load_config`, not in `build_repo`. By the time
+   `build_repo` runs, the backend choice is decided. If `build_repo`
+   had to handle "no backend specified" it would have two jobs
+   (parsing plus constructing); separating them keeps each function
    small.
 
-3. **Fail loudly on bad config — eventually.** The kata version
-   matches `"memory"`, `"sqlite"`, and falls back to `InMemory` for
-   anything else (including unset). That's fine for learning. But in a
-   real deployment, `ORDER_REPO=sqlight` (typo) silently launches an
-   in-memory repo and quietly throws every request's data on the floor
-   after the first restart. The production-grade version of
-   `load_config` distinguishes "unset → default" from "set to garbage
-   → crash with a clear message." The critique section returns to
-   this.
+3. Fail loudly on bad config. The kata version matches `"memory"` and
+   `"sqlite"`, falling back to `InMemory` for anything else, including
+   unset. That works for learning. In a real deployment,
+   `ORDER_REPO=sqlight` (typo) launches an in-memory repo and discards
+   every request's data after the first restart. The production-grade
+   `load_config` distinguishes "unset, default" from "set to garbage,
+   crash with a clear message." The critique section returns to this.
 
-4. **The factory returns `Result`, not panics.** `let assert Ok(...)`
-   is a *caller* choice. `build_repo` returns a value so tests can
-   exercise it without crashing the test runner.
+4. The factory returns `Result`, not panics. `let assert Ok(...)` is the
+   caller's choice. `build_repo` returns a value so tests can exercise it
+   without crashing the test runner.
 
-5. **Don't make `Config` a global.** Pass it in. The function that
-   needs the port reads `config.port`; the function that builds the
-   repo reads `config.repo`. No top-level mutable state.
+5. Don't make `Config` a global. Pass it in. The function that needs
+   the port reads `config.port`; the function that builds the repo
+   reads `config.repo`. No top-level mutable state.
 
-6. **Connection lifetime is process lifetime.** Open the SQLite
-   connection once at startup, hand it to the repo, never close it
-   explicitly. The OS closes it on process exit. (Tests open
-   `:memory:` per test, as kata 9 already established.)
+6. Connection lifetime is process lifetime. Open the SQLite
+   connection once at startup, hand it to the repo, and don't close
+   it, since the OS closes it on process exit. (Tests open `:memory:` per
+   test, as kata 9 already established.)
 
-7. **`ORDER_REPO` lowercase or uppercase?** Pick one. Lowercase
-   (`memory`, `sqlite`) is friendlier for shell scripts; uppercase
-   (`MEMORY`, `SQLITE`) is the older Unix convention. Be consistent.
-   Reject unrecognized values rather than guessing.
+7. `ORDER_REPO` lowercase or uppercase? Pick one. Lowercase (`memory`,
+   `sqlite`) is friendlier for shell scripts; uppercase (`MEMORY`,
+   `SQLITE`) is the older Unix convention. Be consistent, and reject
+   unrecognized values rather than guessing.
 
 ---
 
@@ -298,15 +287,13 @@ fn load_config() -> Config {
 }
 ```
 
-Notice what's *not* here: validation, logging, error returns. This
-function is total — given any environment, it produces a `Config`.
-That keeps `main` straight-line code.
+No validation here, and no error path out. The function is total, because any
+environment produces a `Config`, which keeps `main` straight-line code.
 
-**`build_repo`** is the function from "New Gleam fundamentals" above.
-Read it again now that you have the context: it's the *one* place that
-turns a typed `RepoBackend` into a running `OrderRepo`, with all error
-paths funneled to `Result(_, String)` for the composition root to
-panic on.
+**`build_repo`** is the function from "New Gleam fundamentals" above. It is
+the *one* place that turns a typed `RepoBackend` into a running `OrderRepo`,
+with all error paths funneled to `Result(_, String)` for the composition root
+to panic on.
 
 **`main` becomes choreography:**
 
@@ -318,95 +305,85 @@ let handle = router.handle(deps, _)              // bundle → handler
 // ... start Mist on config.port ...
 ```
 
-Each line has one job. Each function name reads like what it does. The
-boundary between "parse the world" and "do work" is the first three
+Each line has one job and each function name reads like what it does. The
+boundary between "parse the world" and "do work" sits in the first three
 lines.
 
-**One detail to look at on a second read:** `let assert Ok(repo) =
-build_repo(config.repo)` is the *only* place this whole file panics on
-adapter construction. Tests, alternate entry points, anything below
-this line — they all take the *constructed* repo as a value. The fail-
-on-startup pattern lives in exactly one location.
+`let assert Ok(repo) = build_repo(config.repo)` is the *only* place this file
+panics on adapter construction. Everything below that line, including tests
+and alternate entry points, takes the constructed repo as a value. The
+fail-on-startup pattern lives in one location.
 
 ---
 
 ## Critique
 
-**Env vars are a fine config source for one-process apps; they don't
-scale.** Multi-deployment setups (dev/staging/prod), secret rotation,
-runtime reconfiguration — all push you toward a config file, a config
-service (Consul, etcd), or a cloud secrets manager. The *shape* of
-`load_config` doesn't change; the source does. `envoy.get` becomes
-`config_file.read` or `secrets_manager.fetch`, and the typed `Config`
-flows through the rest of the app unchanged. That's the payoff of the
-typed-config boundary.
+Env vars work fine for one-process apps and stop scaling once the deployment
+grows. Multi-deployment setups across dev, staging, and prod (with secret
+rotation and live reconfiguration) push toward a config file, a config service
+like Consul or etcd, or a cloud secrets manager. The shape of `load_config`
+doesn't change; the source does. `envoy.get` becomes `config_file.read` or
+`secrets_manager.fetch`, and the typed `Config` flows through the rest of the
+app unchanged. The typed-config boundary pays back here.
 
-**No file-path validation.** `Sqlite("/no/such/dir/orders.db")` doesn't
-fail until `sqlight.open` runs. That's actually fine — fail-on-open is
-the simplest pattern and gives you a clear error message at the right
-moment. Pre-validation would duplicate the open logic. Skip it.
+No file-path validation here. `Sqlite("/no/such/dir/orders.db")` won't fail
+until `sqlight.open` runs, so the error message arrives at the right moment,
+and pre-validation would duplicate the open logic.
 
-**Tests don't use the factory.** `test/order_repo_sqlite_test.gleam`
-constructs the repo directly with `sqlight.open(":memory:")`. That's
-correct for *those* tests — they're unit tests of the adapter. A
-separate integration test for `load_config` and `build_repo` together
-(set env vars, call the functions, assert the right type came out)
-would prove the wiring works end-to-end. Worth adding as you grow the
-config surface.
+The tests don't use the factory. `test/order_repo_sqlite_test.gleam`
+constructs the repo directly with `sqlight.open(":memory:")`, which is correct
+for unit tests of the adapter. A separate integration test for `load_config`
+and `build_repo` together (set env vars, call the functions, assert the right
+type came out) would prove the wiring works end-to-end. Worth adding as the
+config surface grows.
 
-**No migrations.** The SQLite repo's `CREATE TABLE IF NOT EXISTS` is
-fine for v1. The day you add a `version INT` column to the snapshot
-shape, you need a migration story. Out of scope here; covered in the
-next chapter under "what's beyond the foundation."
+No migration story yet. The SQLite repo's `CREATE TABLE IF NOT EXISTS` works
+for v1, but the day a `version INT` column joins the snapshot shape, a
+migration becomes necessary. Out of scope here; the next chapter touches it
+under "what's beyond the foundation."
 
-**Falling back silently to `InMemory` on unrecognized `ORDER_REPO` is
-a bug magnet.** A typo in the deploy config (`ORDER_REPO=sqlight`
-instead of `sqlite`) gets you a fresh in-memory repo on every restart.
-The clean fix: log a warning, or error out, on any non-empty
-unrecognized value. The kata's `case ... _ -> InMemory` is the
-minimum; the production version distinguishes "unset" from "set to
+Falling back to `InMemory` on an unrecognized `ORDER_REPO` is a bug magnet. A
+typo in the deploy config (`ORDER_REPO=sqlight` instead of `sqlite`) yields a
+fresh in-memory repo on every restart. The clean fix logs a warning or errors
+out on any non-empty unrecognized value. The kata's `case ... _ -> InMemory`
+is the minimum; the production version distinguishes "unset" from "set to
 garbage."
 
-**One process, one connection.** SQLite handles concurrent reads but
-serializes writes through a single connection. For this app shape
-(one Mist process serving requests, single writer) that's fine. Real
-load would push you toward WAL mode (`PRAGMA journal_mode=WAL`) so
-reads don't block while a write is in flight, or a connection wrapper
-that serializes through an actor. Both are mechanical additions when
-the need is real.
+SQLite handles concurrent reads but serializes writes through a single
+connection. For this app shape, one Mist process with one writer, that works
+fine. Real load pushes toward WAL mode (`PRAGMA journal_mode=WAL`) so reads
+don't block while a write is in flight, or a connection wrapper that
+serializes through an actor. Both are mechanical additions when the need
+arrives.
 
 ---
 
 ## DDD takeaway
 
-Configuration is a boundary, exactly like HTTP. Untyped strings come
-in at the edge. A parser turns them into typed values. Typed values
-flow through the rest of the system. The HTTP handler does this for
-request bodies; `load_config` does it for env vars. Same pattern,
-different source.
+Configuration is a boundary like HTTP. Untyped strings arrive at the edge, a
+parser turns them into typed values, and everything downstream works with the
+typed form. The HTTP handler does this for request bodies; `load_config` does
+it for env vars.
 
-The architectural shape that earns its keep over time isn't the
-domain model or even the repository pattern — it's **the discipline of
-keeping the untyped world at the edges.** Every place where a string
-or a `Dynamic` value leaks past `main.gleam` is a future bug. Every
-place where a sum type meets a stringly-typed flag is a future
-refactor. Configuration is just another input channel that needs the
-same treatment.
+Keeping the untyped world at the edges earns its keep over time more than the
+domain model itself or the repository pattern. A string or `Dynamic` value
+that leaks past `main.gleam` is a future bug; a sum type that meets a
+stringly-typed flag downstream is a future refactor. Configuration is one
+more input channel that needs the same treatment.
 
-This is also where the cost of the patterns starts to pay back. The
-in-memory repo wasn't *only* a teaching tool — it's a real adapter
-that runs in tests, in development, and in CI. The SQLite repo is the
-production adapter. Same interface, same use case, same handler. The
-only file that knows the difference is the composition root. **That's
-the architecture working.**
+Here the cost of the patterns starts to pay back. The in-memory repo was not
+*only* a teaching tool; it serves as a real adapter that runs the test suite
+and local development. The SQLite repo slots in behind the same `OrderRepo`
+interface, and the use case and handler above it cannot tell the two apart.
+The composition root is the one file that knows the difference, so the
+architecture earns its keep.
 
 ---
 
 ## What's next
 
-The final chapter — *Putting It Into Practice* — distills the
-experience of shipping software with these patterns: what to do on
-Monday morning, what to skip, when to escalate from one pattern to
-the next, how to talk about all of this with colleagues who haven't
-read the book. The katas teach the patterns. The last chapter teaches
-the judgment.
+The next and final chapter, *Putting It Into Practice*, distills the
+experience of shipping software with these patterns: what to reach for on
+Monday morning, what to skip, when to escalate from one pattern to the next,
+and how to discuss any of it with colleagues who haven't read the book. The
+katas teach the patterns; the closing chapter covers application.

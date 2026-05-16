@@ -1,17 +1,18 @@
-# 02 — Kata 1: Value Objects (`Email`)
+# 02. Kata 1: Value Objects (`Email`)
 
 ## Concept
 
-A **value object** is defined entirely by its attributes. Two `Email`s with
-the same string are the same email. There's no identity — there's nothing
-to identify. They're like numbers: `5` and `5` are the same `5`.
+A **value object** has no identity beyond its attributes. Two `Email`s
+with the same string are the same email, the way `5` and `5` are the
+same `5`. Nothing distinguishes one from another beyond the string itself.
 
-The crucial move is that **you cannot construct an invalid one.** Validation
-happens at the boundary where strings come in. After that, the rest of your
-code can take an `Email` parameter and *trust it*. No defensive checks. No
-"did someone forget to validate this?" anxiety.
+The exercise enforces one rule: you cannot construct an invalid `Email`.
+Validate once at the boundary where the string arrives, and from then on
+any function taking an `Email` parameter can trust it without defensive
+checks.
 
-In Gleam the move is: **opaque type, smart constructor returning `Result`.**
+In Gleam that means an opaque type with a smart constructor returning
+`Result`.
 
 ---
 
@@ -50,59 +51,55 @@ The tests in `test/email_test.gleam` are the spec. Run with `gleam test`.
 
 ---
 
-## Hints — what to do
+## Hints
 
-1. **Start by trimming.** `gleam/string` has `string.trim/1`. Get that out of the way before you do any structural checks; it removes a whole class of edge cases.
-2. **Don't reach for boolean guards.** Don't write `if has_at && local_is_non_empty && domain_is_non_empty`. There's no `if` in Gleam, but more importantly, there's a much cleaner shape available.
-3. **Think about what `string.split(trimmed, "@")` returns.** It's a `List(String)`. The *shape* of that list — its length, which elements are empty — is the validation. Sketch out every possible meaningful shape on paper before writing code.
-4. **Pattern order matters.** When two patterns can match the same input (e.g., `[""]` and `[_]`), put the more specific one first. The empty string matches both, but you want to call it `Empty`, not `MissingAt`.
-5. **Add error variants as you discover them.** The starter has `Empty` and `MissingAt`. You'll find at least two more meaningful failure modes. Name each one explicitly — that's the whole point of a sum-type error.
-6. **For `to_string`,** you need to read the inner field. That works *inside* the module (where the constructor is in scope). Outside this module it would not.
+1. Trim first. `gleam/string` has `string.trim/1`, and trimming before any structural check folds a class of edge cases into the empty case.
+2. Skip boolean guards. Don't write `if has_at && local_is_non_empty && domain_is_non_empty`. Gleam has no `if`, so a cleaner shape opens up.
+3. Inspect what `string.split(trimmed, "@")` returns. It's a `List(String)`, and the shape of that list (its length, which elements are empty) *is* the validation. Sketch every meaningful shape on paper before writing code.
+4. Pattern order matters. When two patterns can match the same input (e.g. `[""]` and `[_]`), put the more specific one first. The empty string matches both, but the right name for it is `Empty`, not `MissingAt`.
+5. Add error variants as you discover them. The starter has `Empty` and `MissingAt`. At least two more meaningful failure modes are waiting. Name each one, because that's the point of a sum-type error.
+6. For `to_string`, reach into the inner field directly. Inside the module that works because the constructor is in scope; outside, it wouldn't.
 
-If you get stuck after 15–20 minutes, scroll down. The point is not to
-brute-force it — it's to internalize the pattern.
+If 15 or 20 minutes pass without traction, scroll down. Brute-forcing it
+defeats the point; the goal is to internalize the pattern.
 
 ---
 
 ## Walk-through
 
-**`opaque` is doing all the work.** Nothing outside this module can build
-an `Email` without calling `new`. That's the whole game with value objects.
+`opaque` does the work, since nothing outside this module can build an `Email`
+without calling `new`. Value objects need exactly that guarantee.
 
-**Pattern order matters.** `[""]` is checked before `[_]`, because an empty
-string after trimming would split into `[""]` (a list containing one empty
-string), which would also match `[_]`. When patterns overlap, the more
-specific one goes first.
+Check `[""]` before `[_]`: an empty string after trimming splits into
+`[""]` (a one-element list holding the empty string), which also matches
+`[_]`. When patterns overlap, the more specific one goes first.
 
-**Returning `Result(Email, EmailError)` instead of `Bool`.** A bool tells
-you yes/no. A typed error tells you *why* — and the compiler forces every
-caller to handle both branches. The information is preserved all the way
-to wherever the error is finally surfaced (an HTTP response, a CLI message,
-a log line).
+A typed error beats a `Bool` because the variant names which failure
+happened, and the compiler forces every caller to handle both branches.
+That information survives all the way out to wherever the error surfaces,
+whether that's an HTTP response or a log line.
 
-**Why `Ok(Email(trimmed))` and not `Ok(Email(local <> "@" <> domain))`.**
-Some solutions reconstruct the email from the split parts. Skip the rebuild
-— the split was for validation, not transformation. `trimmed` is already
-the right string.
+Use `Ok(Email(trimmed))` rather than `Ok(Email(local <> "@" <> domain))`.
+Some solutions rebuild the email from the split parts, but the split
+already did its job as validation and `trimmed` is the string you want.
 
 ---
 
 ## Critique
 
-- The check `[_]` matches a single non-empty token (after splitting on `@`), which means there was no `@` in the input. The variant name `MissingAt` reads correctly here.
-- `[""]` only happens when `trimmed` is `""`. Trimming first is what folds whitespace-only inputs into the `Empty` case for free.
-- Naming variants like `MissingTextBeforeAt` reads better than `EmptyLocalPart` for the audience that actually sees these errors. (Domain language is part of the design.)
+- After splitting on `@`, `[_]` matches a non-empty token, so the input had no `@`. `MissingAt` reads correctly here.
+- `[""]` only happens when `trimmed` is `""`. Trimming first folds whitespace-only inputs into the `Empty` case for free.
+- A name like `MissingTextBeforeAt` reads better than `EmptyLocalPart` for the audience that sees these errors. Domain language is part of the design.
 
 ---
 
 ## DDD takeaway
 
-Anywhere in your codebase that has a parameter `email: Email`, you have a
-*compile-time guarantee* it's been validated. No defensive checks. No
-"did someone forget to validate this?" Validation happens once, at the
-boundary where strings come in, and the type system carries the proof
-everywhere else.
+Anywhere in your codebase with a parameter `email: Email`, the compiler
+guarantees `new` already validated it. You validate once at the
+boundary and the type carries the proof everywhere else, so downstream
+code never has to recheck.
 
-That's the upfront ceremony you pay for. In return: every later layer of
-the system gets to assume the email is well-formed, because the type system
-won't let it be otherwise.
+That's the upfront ceremony the design pays for. Every later layer of the
+system assumes the email is well-formed, because the type system permits
+nothing else.

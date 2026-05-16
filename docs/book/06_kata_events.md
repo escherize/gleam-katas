@@ -1,32 +1,31 @@
-# 06 — Kata 5: Domain Events
+# 06. Kata 5: Domain Events
 
 ## Concept
 
-Up to now, every operation on the aggregate returned just *the new state*.
-Now they return the new state **plus a list of facts about what happened.**
+Until now, every operation on the aggregate returned the new state.
+From here on, each one also returns a list of facts about what just
+happened. Those facts, domain events, are immutable past-tense
+records carrying enough data to describe the transition on their own.
 
-Those facts — domain events — are immutable, named in **past tense**, and
-carry enough data to describe the transition standalone.
+What you get for the extra return value:
 
-Why bother? Three reasons that compound:
+- Other parts of the system can react without the aggregate knowing they exist. Send a confirmation email when `OrderPlaced` fires; `Order` doesn't need to know email exists.
+- The event stream *is* the audit log, with no separate "what happened to this order" code path.
+- Once the aggregate emits a complete event log per state change, you can derive state by replaying events instead of storing it. That's the foundation CQRS and event sourcing build on.
 
-- **Decoupling.** Other parts of the system can react to events without the aggregate knowing about them. Send a confirmation email when `OrderPlaced` fires — `Order` doesn't need to know email exists.
-- **Audit log for free.** The event stream *is* the history. No separate "what happened to this order" code path.
-- **Seed of event sourcing.** Once the aggregate emits a complete event log per state change, you can derive state by replaying events instead of storing it. That's the foundation of CQRS / event sourcing systems.
-
-The naming matters: `OrderPlaced`, not `PlaceOrder`. Events are *things
-that already happened*, not *commands to do something*. (Commands and
-events are duals — see the bonus section at the end.) Mix them and you
-lose the ability to reason about your system.
+`OrderPlaced` names a fact in the past tense, where `PlaceOrder` would
+name a command in the present, a request rather than a record. Mix
+the two and you lose the ability to reason about your system. Commands
+and events are duals, a point the bonus section returns to.
 
 ---
 
 ## New Gleam fundamentals
 
-You don't actually need much new. The kata is mostly an *additive change*
-to the API — same toolkit, new return shape.
+The kata mostly widens the return shape, so the toolkit is what you
+already know from earlier chapters.
 
-### Tuples — `#(a, b)`
+### Tuples: `#(a, b)`
 
 Gleam's lightweight pair / triple syntax:
 
@@ -35,9 +34,8 @@ let pair = #(order, [OrderCreated(id, cid)])
 let #(o, events) = pair
 ```
 
-No type definition needed — just a structural pair. Used here to bundle
-"the new state" and "the events emitted by this transition" into one
-return value without inventing a record per operation.
+The pair bundles new state with the events from this transition without
+a named record per operation.
 
 Pattern matching on tuples works the same as anywhere else:
 
@@ -50,10 +48,10 @@ case order.add_line(o, sku, q, p) {
 
 ### `result.try` chaining (earning its keep)
 
-You met `result.try` in Kata 3, but `place` is where it earns its keep.
-`OrderPlaced` carries the total; computing the total can fail. So
-`place` has to chain: validate preconditions → compute total →
-construct event:
+You met `result.try` in Kata 3, and `place` is where it earns its
+keep. The `OrderPlaced` event carries the total, computing that total
+can fail, and `place` has to thread the preconditions, the total, and
+the event into one chain.
 
 ```gleam
 pub fn place(order: Order) -> Result(#(Order, List(OrderEvent)), OrderError) {
@@ -70,9 +68,9 @@ pub fn place(order: Order) -> Result(#(Order, List(OrderEvent)), OrderError) {
 ```
 
 That `use t <- result.try(total(order))` line is what `use` was designed
-for — it short-circuits the rest of the body if `total` returns `Error`,
-otherwise it binds `t` and continues. Without it the construction would
-nest a `case` inside another `case`.
+for. If `total` returns `Error`, the chain stops there; otherwise `t`
+binds and execution continues. Without it you'd nest a `case` inside
+another `case`.
 
 ---
 
@@ -102,46 +100,44 @@ pub fn place(order: Order) -> Result(#(Order, List(OrderEvent)), OrderError)
 
 Rules:
 
-- `new` emits `[OrderCreated(...)]`. It's total — no `Result` wrapper.
+- `new` emits `[OrderCreated(...)]` and is total (no `Result` wrapper).
 - `add_line` emits `[LineAdded(...)]` on success.
 - `place` emits `[OrderPlaced(...)]` on success, with the total computed at placement time.
-- **Failures emit no events.** Events represent things that *actually happened*, and a failed operation didn't happen. The `Error(...)` branch returns *only* the error — no partial event list.
+- A failed operation isn't a fact, so the `Error(...)` branch returns the error by itself and never builds a partial event list.
 
-The tests in `test/order_test.gleam` are the per-operation spec. The
-tests in `test/order_scenarios_test.gleam` exercise the aggregate
-through *sequences* of commands (see the "Scenario testing" section
-below).
+`test/order_test.gleam` holds the per-operation spec, and
+`test/order_scenarios_test.gleam` exercises the aggregate through
+sequences of commands (see "Scenario testing" below).
 
 ---
 
-## Hints — what to do
+## Hints: what to do
 
-1. **Implement in this order:** `new_id` → `new` → guard helpers → `add_line` → `total` → `place`. `place` depends on `total`, so do `total` first.
-2. **`new` is the simplest function in the file now.** It's total. Construct the order, construct the event, return the tuple. No `Result`, no `case`, no preconditions.
-3. **Failures emit no events.** When a precondition guard returns `Error(...)`, the event list never gets built. The `Ok` branch is the *only* place where you construct events. This falls out naturally from the `use <-` chain — you never reach the event construction if a guard short-circuits.
-4. **`place` is the interesting one.** Sketch:
-   - Guard: order not already placed
-   - Check: lines isn't empty (else `CannotPlaceEmptyOrder`)
-   - Compute total via `result.try` (else propagate the underlying error)
-   - Construct placed order + `OrderPlaced` event
-5. **Don't try to share event-construction code.** Each operation's event has a different shape. Just construct each event inline at its emission site — it's three lines per operation.
-6. **The kata 4 helpers are unchanged.** `no_modify_placed`, `non_empty_sku`, `positive_qty`, `currency_matches` — same signatures, same bodies. They short-circuit before you build anything.
+1. Implement in this order: `new_id` → `new` → guard helpers → `add_line` → `total` → `place`. `place` depends on `total`, so `total` comes first.
+2. `new` is now the simplest function in the file. Build the order, attach the `OrderCreated` event, and return the tuple; no `Result` wrapper and no precondition guards.
+3. Event construction lives on the `Ok` branch only. When a precondition guard returns `Error(...)`, the `use <-` chain short-circuits and you never reach the line that builds the event list.
+4. `place` is the interesting one. Sketch:
+   - Guard the placed status
+   - Check that lines isn't empty (else `CannotPlaceEmptyOrder`)
+   - Compute the total via `result.try` (else propagate the underlying error)
+   - Construct the placed order plus its `OrderPlaced` event
+5. Don't share event-construction code across operations. Each event has a different shape, so build each one inline at the emission site; it's a handful of lines per operation.
+6. The kata 4 helpers carry over untouched: `no_modify_placed`, `non_empty_sku`, `positive_qty`, and `currency_matches` keep their signatures and bodies. They short-circuit before you build anything.
 
 ---
 
 ## Walk-through
 
-**`new` is total.** No `Result`. Always succeeds. Returns a tuple of the
-new draft order and a single-element event list. The simplest function
-in the file now.
+`new` is total. It returns a tuple of the new draft order and an event
+list with one `OrderCreated`.
 
-**`add_line` builds the event in the Ok branch only.** The four `use <-`
-guards short-circuit on failure. If we get past them, we construct the
-new line, the new order, and the event — all in three lines. Failures
-return `Error(...)` directly, which means **no event list ever gets
-built on the failure path**. That's the rule: failures aren't facts.
+`add_line` builds its event in the `Ok` branch only. The `use <-`
+guards short-circuit on failure, and past them a few lines finish the
+job by producing the new line, the updated order, and the event.
+Failures return `Error(...)` directly and never construct an event list,
+because a failure isn't a fact.
 
-**`place` is the interesting one.**
+`place` does the work the other two avoid:
 
 ```gleam
 use <- no_modify_placed(order)        // guard 1
@@ -155,37 +151,33 @@ case order.lines {
 }
 ```
 
-Three layers of "can fail":
+Failure layers stack here: the status check via a zero-arg
+`use <-`, the empty-lines check via a `case` returning `Error`
+directly, and the total computation via `use t <- result.try`. Each
+short-circuits independently, and construction of the placed order and
+its event happens only after every layer passes. The chained-failure
+machinery from earlier chapters exists for exactly this shape.
 
-1. The status check (zero-arg `use <-`).
-2. The empty-lines check (a `case` returning `Error` directly).
-3. The total computation (one-arg `use <-` with `result.try`).
-
-Each short-circuits independently. The body — *constructing the placed
-order and its event* — only runs when all three have passed. This is
-exactly what the chained-failure machinery from earlier chapters was
-built for.
-
-**Why `total` is `pub`.** Two reasons. (a) Callers might want to display
-a running total before placing. (b) The scenario tests want to assert on
-expected totals. Exposing `total` doesn't violate the aggregate boundary
-because it's a pure read — it can't put the order into a bad state.
+`total` is `pub` because callers want to display a running total before
+placing, and the scenario tests need to assert on expected totals.
+Exposing it doesn't break the aggregate boundary; it's a pure read and
+can't put the order into a bad state.
 
 ---
 
-## Scenario testing — commands as data
+## Scenario testing: commands as data
 
 Once the aggregate has multiple operations that chain together,
 per-operation tests start looking the same:
 
 > build empty order → add line → add line → place → assert.
 
-That's a lot of ceremony per assertion. The cleaner pattern: make the
-inputs *data*, build a tiny engine to run them, write tests as
-declarative scenarios.
+That's a lot of ceremony per assertion. The cleaner pattern lifts the
+inputs to data, runs them through a tiny engine, and lets the tests
+read as declarative scenarios.
 
-The full file lives at `test/order_scenarios_test.gleam`. The core is
-~15 lines:
+The full file lives at `test/order_scenarios_test.gleam`; the core is
+about fifteen lines.
 
 ```gleam
 pub type OrderCommand {
@@ -213,9 +205,9 @@ fn apply_one(state, cmd) {
 
 `list.try_fold` walks the command list, threading `(order, events)`
 through each step. The first failure short-circuits the fold and bubbles
-out as `Error(...)`. Successful runs accumulate events in order.
+out as `Error(...)`, while successful runs accumulate events in order.
 
-Then tests read like specifications:
+Tests then read like specifications.
 
 ```gleam
 pub fn two_lines_then_place_emits_correct_events_test() {
@@ -244,13 +236,14 @@ pub fn add_line_after_place_fails_test() {
 }
 ```
 
-Each scenario is one `let cmds = [...]` followed by one assertion. The
-*sequence* is the data; the *assertion* is the spec. You can read fifty
-of these in two minutes and know exactly what the aggregate does.
+Each scenario is one `let cmds = [...]` followed by one assertion,
+where the command sequence carries the meaning and the assertion locks
+it in. Fifty of these read in two minutes and you know exactly what the
+aggregate does.
 
-This pattern scales. The set of failure scenarios is finite and easy to
-enumerate — once they all pass, you have *high confidence* in the
-aggregate's behavior, not just per-operation correctness.
+The pattern scales because the set of failure scenarios is finite and
+easy to enumerate; once they all pass, you trust the aggregate's
+behavior rather than just its per-operation correctness.
 
 ---
 
@@ -261,25 +254,24 @@ trajectory:
 
 > `aggregate × command → Result(#(new_aggregate, events), error)`
 
-That signature is exactly what every CQRS / event-sourcing framework
-treats as the central abstraction. You wrote it without a framework, in
-about 100 lines of Gleam, with the type system enforcing every
-invariant.
+That signature is the central abstraction every CQRS and event-sourcing
+framework reaches for, and you wrote it without a framework in about a
+hundred lines of Gleam, with the type system enforcing every invariant.
 
-In a richer system you wouldn't return events to the caller — you'd
-publish them to an event bus and forget about them. Other bounded
-contexts subscribe and react. Your `Order` aggregate would be entirely
-unaware that a `Shipping` context exists, yet shipping would still
-happen, because shipping listens for `OrderPlaced`. **This decoupling
-is the whole reason events exist as a first-class concept.**
+In a richer system you wouldn't return events to the caller. You'd
+publish them to an event bus and forget about them, and other bounded
+contexts would subscribe and react. Your `Order` aggregate stays
+unaware that a `Shipping` context exists, yet shipping still happens
+because shipping listens for `OrderPlaced`. That decoupling earns events
+their place as a first-class concept.
 
 ---
 
-## Bonus — commands as a first-class concept
+## Bonus: commands as a first-class concept
 
-Notice we kept `OrderCommand` in *test code*, not in the domain. That
-was a deliberate choice — the kata is about events, not commands. But
-in a fully event-sourced system, commands graduate to the domain:
+`OrderCommand` lives in test code rather than in the domain. That was
+deliberate; this kata is about events. In a fully event-sourced system,
+commands graduate to the domain:
 
 ```gleam
 // commands flow in from the boundary (HTTP, message queue, etc.)
@@ -295,21 +287,22 @@ pub fn handle(
 }
 ```
 
-That single function is the aggregate's entire API. Everything else is
-detail. CQRS frameworks (Axon, EventFlow, akka-persistence-typed) are
-built around exactly this signature.
+That function is the aggregate's API; everything else is detail. CQRS
+frameworks like Axon, EventFlow, and akka-persistence-typed sit on this
+signature.
 
-For the kata, we don't need that abstraction yet — but recognize that
-the scenario engine you just wrote is a *test-time* version of the
-production-time command handler. The pattern is real.
+The kata doesn't need that abstraction yet, but the scenario engine you
+just wrote is the test-time twin of the production command handler,
+the same pattern wearing a different label.
 
 ---
 
 ## What's next
 
-Kata 6 — **Repositories.** The aggregate has been a pure function so
-far. The next chapter introduces persistence: how the use case loads an
-`Order` from storage, calls `place`, saves the result, and publishes
-events — all without the domain code knowing what storage is.
+Kata 6: **Repositories.** The aggregate has been a pure function so
+far; the next chapter introduces persistence. A use case will load an
+`Order` from storage, call `place`, save the result, and publish the
+events, and the domain code never learns what storage is.
 
-That's where the layering from `00_introduction.md` earns its keep.
+That's where the layering from `00_introduction.md` starts earning its
+keep.

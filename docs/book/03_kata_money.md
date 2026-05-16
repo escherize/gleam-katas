@@ -1,38 +1,36 @@
-# 03 — Kata 2: Value Objects with operations (`Money`)
+# 03. Kata 2: Value Objects with operations (`Money`)
 
 ## Concept
 
-Same shape as `Email` (opaque type, smart constructor) but now with two new
-pressures:
+Same shape as `Email` (opaque type, smart constructor), under two new pressures.
 
-1. **Composition.** A `Money` has *two* attributes — amount and currency — and they have to stay coherent.
-2. **Operations that can fail at the domain level.** Adding USD to EUR is nonsense; the type system should stop it.
+1. A `Money` has two attributes (amount and currency) that have to stay coherent.
+2. `add(usd, eur)` is nonsense the type system should refuse.
 
-This is where DDD starts to feel less like "wrap your strings" and more like
-*encoding the rules of the domain into the types*. The type doesn't just
-store data — it carries the operations that respect its invariants.
+Here DDD turns into encoding the rules of the domain into the
+types. The type carries the operations that respect its invariants
+alongside the data they operate on.
 
 ---
 
 ## New Gleam fundamentals
 
-You'll need two more concepts on top of what Kata 1 used.
+Kata 1 needed an opaque type and a smart constructor. This one adds record update syntax and the `use <-` desugaring.
 
 ### Record update syntax
 
-To produce a "modified" copy of a record without re-listing every field:
+To produce a modified copy of a record without re-listing every field:
 
 ```gleam
 let updated = Money(..money, amount: 0)
 ```
 
 `..money` says "take all the fields from this value, then override the
-named ones." Critical for keeping aggregate code from drowning in field
-repetition.
+named ones." Without it, aggregate code drowns in field repetition.
 
-### `use <-` — guards as functions
+### `use <-`: guards as functions
 
-Some logic appears as a precondition again and again:
+The same precondition shows up at the head of every operation:
 
 ```gleam
 case a.currency == b.currency {
@@ -68,18 +66,18 @@ pub fn add(a: Money, b: Money) -> Result(Money, MoneyError) {
 ```
 
 `use <- f(...)` is sugar for `f(..., fn() { rest_of_block })`. It lifts the
-rest of your block into a callback and passes it as the helper's last
+remainder of the block into a callback and passes it as the helper's last
 argument.
 
 A few mechanical facts:
 
-- `use <-` (no binding) means the callback takes zero arguments — it's a guard.
-- `use x <- f(...)` (one binding) means the callback takes one argument — used for unwrapping (we'll see this in Kata 3).
-- The helper decides whether to call the callback. If it doesn't (e.g., currency mismatch), it returns its own error directly.
-- The lowercase `t` in `Result(t, MoneyError)` is a *generic type variable*. It lets the helper work for callers whose body returns `Result(Money, ...)`, `Result(Order, ...)`, anything.
+- `use <-` with no binding gives the callback zero arguments, which makes it a guard.
+- `use x <- f(...)` gives the callback one argument, for unwrapping (Kata 3).
+- The helper decides whether to call the callback. On a currency mismatch it returns its own error and the rest of the block never runs.
+- The lowercase `t` in `Result(t, MoneyError)` is a *generic* type variable. The helper works whether the calling body returns `Result(Money, ...)` or `Result(Order, ...)`.
 
-This is the pattern that will let aggregates read top-to-bottom like a list
-of business rules. (For a deeper explainer, see [`docs/use.md`](../use.md).)
+Aggregates built on this pattern read top-to-bottom like a list of
+business rules. For a deeper explainer, see [`docs/use.md`](../use.md).
 
 ---
 
@@ -124,33 +122,33 @@ The tests in `test/money_test.gleam` are the spec.
 
 ---
 
-## Hints — what to do
+## Hints: what to do
 
-1. **Write the naive version first.** Each operation does its own checks: `subtract` checks currencies *and* checks the result isn't negative. `multiply` checks negativity. It will work and the tests will pass. Get there first.
-2. **Then look for duplication.** Once it works, you'll see two patterns repeating across the file:
-   - Every operation that touches two `Money`s repeats the same currency check.
-   - Every operation that produces a new `Money` independently re-checks the negative-amount rule.
-3. **Refactor: route everything through `new`.** If `new` is the single source of truth for the negative-amount invariant, then `subtract` doesn't need its own check, and `multiply` gets the check for free.
-4. **Refactor: lift the currency check into a helper.** Write `require_same_currency` with the shape from the fundamentals section. Use it via `use <-`. Suddenly every operation reads as `require same currency, then compute`.
-5. **`zero(money)` doesn't return `Result`.** Why? Because `0` is always valid — it can never violate the invariant. Lean on the types: when an operation is total, say so by leaving `Result` out of the return type.
-6. **Why does the test for `multiply(m, -1)` expect `NegativeAmount`?** Trace it through your implementation. If `multiply` routes through `new`, this falls out automatically — that's the point of funneling.
+1. Write the naive version first, with each operation doing its own checks: `subtract` checks currencies and verifies the result isn't negative, `multiply` checks negativity. Get the tests passing before refactoring.
+2. Then look for duplication. Operations that touch two `Money`s repeat the same currency check, and operations that produce a new `Money` re-check the negative-amount rule on their own.
+3. Route everything through `new` so it becomes the source of truth for the negative-amount invariant. `subtract` loses its own check, and `multiply` inherits the check for free.
+4. Lift the currency check into a helper. Write `require_same_currency` with the shape from the fundamentals section, then call it with `use <-`. Every operation now reads as a guard followed by the computation.
+5. `zero(money)` returns `Money`, not `Result(Money, _)`. The value `0` always satisfies the invariant, so the function is total. Leave `Result` out of the return type when nothing can go wrong.
+6. Trace the test for `multiply(m, -1)`. Why `NegativeAmount`? If `multiply` routes through `new`, the answer falls out, which is the point of funneling.
 
 ---
 
 ## Walk-through
 
-**Funneling through `new`.** Every constructor path re-validates. `subtract`
-no longer needs its own `amount >= 0` check — `new` does it. `multiply`
-catches negative factors automatically — also `new`. The non-negative
-invariant exists in exactly *one place*, and you literally cannot construct
-a `Money` that violates it.
+### Funneling through `new`
 
-**`use <- require_same_currency(a, b)`.** The duplicate currency check from
-a naive solution gets pulled into a named helper. Each operation now reads
-as a flat list of business rules:
+Every constructor path re-validates. `subtract` drops its own
+`amount >= 0` check because `new` already runs it, and `multiply`
+catches negative factors for the same reason. The non-negative invariant
+lives in one place, so no caller can construct a `Money` that violates
+it.
 
-> require same currency, then sum.
-> require same currency, then subtract.
+### `use <- require_same_currency(a, b)`
+
+A naive solution duplicates the currency check across every operation.
+Pull the check into a named helper and each operation turns into a flat
+list of business rules, where every entry is "require same currency,
+then do the work."
 
 The mechanical desugar:
 
@@ -162,36 +160,40 @@ pub fn add(a: Money, b: Money) -> Result(Money, MoneyError) {
 }
 ```
 
-`use` is *just sugar* for that callback shape. Once you can read one form,
-you can read the other.
+`use` is sugar for that callback shape, so reading one form teaches the other.
 
-**`zero` is total.** No `Result`. The function can't fail — `0` always
-satisfies the non-negative rule. Use record update (`Money(..money, amount:
-0)`) so the currency comes along for free.
+### `zero` is total
 
-**Storing amounts as `Int` minor units.** Floats and money don't mix —
-`0.1 + 0.2 ≠ 0.3` in IEEE-754. Real systems store cents. This is a domain
-modeling decision encoded in the type.
+The function returns `Money` rather than `Result(Money, _)` because `0`
+always satisfies the non-negative rule. Record update
+(`Money(..money, amount: 0)`) carries the currency through.
 
-**Why `add` returns `Result`.** In a primitive world `add(usd_5, eur_3)`
-silently gives you `8` of nothing. In a domain-modeled world, it's a
-`CurrencyMismatch` you must handle. The bug becomes impossible to ignore.
+### Amounts as `Int` minor units
+
+Floats and money don't mix, because `0.1 + 0.2 ≠ 0.3` in IEEE-754, which
+is why banks store cents instead of dollars. Choosing `Int` here is a
+domain modeling decision the type records.
+
+### Why `add` returns `Result`
+
+A primitive `add(usd_5, eur_3)` silently hands back `8` of nothing. The
+domain-modeled version returns `CurrencyMismatch`, so the bug now sits
+in the type signature where the caller has to deal with it.
 
 ---
 
 ## Critique
 
-- `same_currency` is `pub` because the next kata (`Order`) needs to compare currencies between lines. Helpers that the wider domain reaches for should be exposed; helpers that are private to the module's internal flow (`require_same_currency`) shouldn't be.
-- This implementation doesn't handle integer overflow. For toy domain code that's fine; for production money handling you'd want to either use a bigint type or guard against it explicitly.
+- `same_currency` is `pub` because the next kata (`Order`) compares currencies between lines. Helpers the wider domain reaches for go public, and helpers private to one module's internal flow (like `require_same_currency`) stay private.
+- The module ignores integer overflow, which is fine for toy domain code. For production money handling, use a bigint type or guard explicitly.
 
 ---
 
 ## DDD takeaway
 
-You have a module where the *only* way to produce a `Money` is one that
-passes every invariant. Callers cannot lie about currency. Callers cannot
-smuggle in negative amounts. Every `Money` in your system is, by
-construction, valid.
+The module has one way to produce a `Money`, and that path passes every
+invariant. No caller can lie about currency or smuggle in a negative
+amount, so every `Money` in the system is valid by construction.
 
-This is what people mean by "make illegal states unrepresentable" — it's
-not a slogan, it's the literal property your type now has.
+"Make illegal states unrepresentable" is the slogan, and the type now
+embodies it.

@@ -1,60 +1,56 @@
-# 07 — Kata 6: Repositories
+# 07. Kata 6: Repositories
 
 ## Concept
 
-The aggregate has been pure all along. It takes a state and a command,
-returns a new state and events. Beautiful — and useless if it doesn't
-survive a process restart.
+The aggregate has stayed pure. State and a command go in, a new state
+and events come out. That work is worth nothing once the process
+restarts.
 
-A **repository** is the interface that turns an aggregate type into
-something you can load and save. The domain depends on the *interface*
-(a port); the *implementation* (an adapter) lives in the infrastructure
-layer. Nothing in `order.gleam` learns what storage looks like.
+A repository turns an aggregate type into something you can load and
+save. The domain depends on the interface and the implementation lives
+in the infrastructure layer, so `order.gleam` stays ignorant of
+storage.
 
-Two consequences:
+Use cases then test without infrastructure. A test places an order
+through the repo, loads it back, and checks the events. Storage stays
+pluggable on the other side, so you swap an in-memory dict today for
+Postgres next week, and the use-case code on top doesn't notice.
 
-1. **Use cases become testable without infrastructure.** Place an order, load it
-   back, assert on the events — no DB, no fixtures.
-2. **Storage strategy is pluggable.** In-memory dict on Tuesday, Postgres on
-   Wednesday — same use-case code on top.
-
-The key DDD discipline: **one repository per aggregate**, not per
-entity. You save an `Order`, not an `OrderLine`. The aggregate is the
-consistency unit; the repo's contract is "give me back a valid one or
-fail."
+A repository belongs to an aggregate, not an entity. You save an
+`Order` and an `OrderLine` rides along inside it. The aggregate is the
+consistency unit, and the repo's contract is "give me back a valid one
+or fail."
 
 ## What you load is what you trust
 
-The repository's other job is to put loaded data back through the smart
-constructors. Reading a row gives you raw fields; turning those into a
-typed `Order` goes through `email.new`, `customer.new_id`, etc. — the
-same validation that keeps HTTP input honest. **A corrupt row is
-`Error(CorruptRow(...))`, not a thrown exception.**
+The repository's other job is to feed loaded data back through the
+smart constructors. A database row is raw fields, and turning those
+into a typed `Order` goes through `email.new`, `customer.new_id`, and
+friends, the same validation that keeps HTTP input honest. A corrupt
+row becomes `Error(CorruptRow(...))` rather than a thrown exception.
 
-This is why the kata 1 ceremony pays off compounded here. Every layer
-that reconstructs trusts the type, because every layer that constructs
-went through the smart constructor. There is no "but I got it from the
-database, so I trust it" backdoor.
+The Kata 1 ceremony compounds here. Every reconstruction trusts the
+type because every construction went through the smart constructor.
+No "but I got it from the database, so I trust it" backdoor exists.
 
 ## The use case is the orchestrator
 
-A use case is a function that does one thing the application supports:
-"place an order." The shape:
+A use case is a function that does one thing the application
+supports, like "place an order." The shape is:
 
 ```
 load via repo → call domain → save via repo → return events
 ```
 
-Each step can fail, with a *typed* error. The use case wraps repo
-errors and domain errors in a `PlaceOrderError` so callers know which
-layer broke. This pulls together every chaining pattern from earlier
-katas — `result.try` from Kata 3, the wrap-the-cause idea from Kata 5.
+Every step has a typed error. The use case wraps repo errors and
+domain errors in a `PlaceOrderError` so callers know which layer broke,
+which is where the chaining patterns from earlier katas come together:
+`result.try` from Kata 3 and the wrap-the-cause idea from Kata 5.
 
-The payoff: **the use case is the application boundary.** Above it,
-HTTP / CLI / message handlers translate to and from this type. Below
-it, the domain. The use case is where you can write a test that says
-"given these inputs, this is what happens" without spinning up
-infrastructure.
+The use case is the application boundary that HTTP, CLI, and message
+handlers translate into and out of. The domain sits beneath it. A test
+of a use case says "given these inputs, this is what happens" without
+spinning up any infrastructure.
 
 ---
 
@@ -62,8 +58,8 @@ infrastructure.
 
 ### Records of functions
 
-A type whose fields are *functions* is a perfectly normal Gleam type.
-Used here as an interface:
+A Gleam record whose fields happen to be functions is still an
+ordinary record, and that record serves as an interface:
 
 ```gleam
 pub type OrderRepo {
@@ -75,41 +71,40 @@ pub type OrderRepo {
 ```
 
 A `Customer` and an `OrderRepo` are the same kind of value. The
-difference is what's inside the fields. Callers don't care:
+fields differ and callers don't care:
 
 ```gleam
 let order = repo.find(id)
 ```
 
-That's the entire pattern. No `IFooRepository<Order>`, no DI container,
-no annotations. **A type with function fields is the interface.**
+A type with function fields is the interface, without an
+`IFooRepository<Order>` or a DI container in sight.
 
 ### Why we need OTP
 
-Gleam has no globals, no `let mut`, no static fields. State that
-survives across function calls has to live somewhere — and the
-somewhere is a *process*.
+Gleam has no globals or mutable fields. State that needs to survive
+across function calls has to live somewhere, and that somewhere is a
+process.
 
-A process is a lightweight Erlang thread with a mailbox. You send it
-messages; it processes them one at a time. Its state is a value it
-threads through the message loop. From outside, you never see the state
-— you only see responses to your messages.
+A process is a lightweight Erlang thread with a mailbox. You send
+messages and it handles them one at a time. The state is a value the
+process threads through its message loop, and outside the process you
+see replies rather than the state itself.
 
-This is the OTP model in one sentence. For a repository, the process
-holds a `Dict(OrderId, Order)`; messages ask "find this id" or "save
-this order"; the process replies with the answer.
+For a repository, the process holds a `Dict(OrderId, Order)` and the
+messages ask "find this id" or "save this order."
 
 ### OTP, just enough
 
-Five vocabulary words is all you need:
+The vocabulary stays compact.
 
-- **`Dict(k, v)`** — immutable hash map. `dict.new()`, `dict.get(d, k) -> Result(v, Nil)`, `dict.insert(d, k, v) -> Dict(k, v)`. From `gleam/dict`.
-- **`Subject(msg)`** — typed mailbox / address-of-process. You hold a `Subject(Find(...) | Save(...))` to send messages to a particular actor.
-- **`actor.new(initial_state) |> actor.on_message(handler) |> actor.start`** — build and start. Returns `Result(Started(Subject(msg)), StartError)`. The `Started.data` field is the subject you use to send messages from outside.
-- **The handler signature**: `fn(state, msg) -> actor.Next(state, msg)`. Returns `actor.continue(new_state)` to loop with new state, or `actor.stop()` to terminate.
-- **`process.call(subject, timeout, builder)`** — synchronous request/reply. The `builder` is `fn(reply_subject) -> msg`: you embed a reply subject inside the message; the actor sends its response to that subject; `process.call` blocks until it arrives (or times out).
+- `Dict(k, v)` from `gleam/dict`, an immutable hash map. `dict.new()`, `dict.get(d, k) -> Result(v, Nil)`, `dict.insert(d, k, v) -> Dict(k, v)`.
+- `Subject(msg)`, a typed mailbox, the address of a process. Hold a `Subject(Find(...) | Save(...))` to send messages to a particular actor.
+- `actor.new(initial_state) |> actor.on_message(handler) |> actor.start` builds and starts the actor. Returns `Result(Started(Subject(msg)), StartError)`. The `Started.data` field is the subject outside callers use.
+- The handler signature is `fn(state, msg) -> actor.Next(state, msg)`. Return `actor.continue(new_state)` to loop, or `actor.stop()` to terminate.
+- `process.call(subject, timeout, builder)` does synchronous request/reply. The `builder` has type `fn(reply_subject) -> msg`. You embed a reply subject in the outgoing message, the actor sends its response there, and `process.call` blocks until that response arrives or the timeout expires.
 
-A worked example for intuition (counter actor):
+A counter actor builds the same shape:
 
 ```gleam
 type Msg {
@@ -131,13 +126,13 @@ fn handle(state: Int, msg: Msg) -> actor.Next(Int, Msg) {
 }
 ```
 
-Substitute `Dict(OrderId, Order)` for `Int`, `Find` and `Save` for
-`Get` and `Set`, and you have a repository.
+Swap `Dict(OrderId, Order)` for `Int` and swap `Find`/`Save` for
+`Get`/`Set`, and you have a repository.
 
 ### Wrapping the actor in the interface
 
-The actor's `Subject(Msg)` is an implementation detail. The thing the
-use case sees is an `OrderRepo`. Bridge with closures:
+The actor's `Subject(Msg)` is an implementation detail. The use case
+sees an `OrderRepo`. Closures bridge the two:
 
 ```gleam
 pub fn in_memory() -> Result(OrderRepo, actor.StartError) {
@@ -154,13 +149,12 @@ pub fn in_memory() -> Result(OrderRepo, actor.StartError) {
 }
 ```
 
-Each function field is a closure over the actor's subject. Callers
-never know the actor exists.
+Each function field closes over the actor's subject. Callers never
+know the actor exists.
 
 ### Error wrapping across layers
 
-When two layers can fail, the cleanest pattern is a small sum type that
-*names which layer*:
+When two layers can fail, the error type names the layer:
 
 ```gleam
 pub type PlaceOrderError {
@@ -169,18 +163,19 @@ pub type PlaceOrderError {
 }
 ```
 
-The conversion happens via `result.map_error`, but it relies on a
-Gleam fact that's easy to miss: **constructors are functions.** When
-you write `pub type PlaceOrderError { RepoFailed(RepoError) | ... }`,
-`RepoFailed` is two things at once:
+The conversion happens via `result.map_error`, which relies on a
+Gleam fact that's easy to miss: constructors are functions. When you
+write `pub type PlaceOrderError { RepoFailed(RepoError) | ... }`,
+`RepoFailed` does double duty. It works as a pattern in a `case`
+expression to destructure (`case e { RepoFailed(inner) -> ... }`), and
+it also works as a value of type `fn(RepoError) -> PlaceOrderError`
+that fits anywhere a function does.
 
-- a *pattern* (used in `case` to destructure: `case e { RepoFailed(inner) -> ... }`)
-- a *value of type `fn(RepoError) -> PlaceOrderError`* (used anywhere a function is expected)
-
-`result.map_error` has signature `fn(Result(a, e1), fn(e1) -> e2) -> Result(a, e2)` —
-it takes a Result and a function from the old error type to the new
-error type, applies the function only on the `Error` branch, and
-returns a Result whose error type is whatever the function returns.
+`result.map_error` has signature
+`fn(Result(a, e1), fn(e1) -> e2) -> Result(a, e2)`. Given a Result
+and a function from the old error type to the new one, it applies
+that function on the `Error` branch and returns a Result whose error
+type is whatever the function returned.
 
 Pass `RepoFailed` (a function `fn(RepoError) -> PlaceOrderError`) and
 the result's error type becomes `PlaceOrderError`:
@@ -191,23 +186,22 @@ let r2: Result(Order, PlaceOrderError)  = r1 |> result.map_error(RepoFailed)
 //                                    RepoFailed is the function ^
 ```
 
-The cause is preserved (the original `RepoError` lives inside the
-`RepoFailed` wrapper); the layer is named (callers can pattern-match
-on `RepoFailed(_)` vs `DomainFailed(_)` to know which side broke).
+The original `RepoError` survives inside the `RepoFailed` wrapper, so
+the cause is intact, and callers pattern-match on `RepoFailed(_)`
+versus `DomainFailed(_)` to see which side broke.
 
-Why this matters: `result.try` requires the inner Result and the outer
-function's return type to share an error type. Without the
-`map_error`, you'd get `Result(_, RepoError)` from the repo but the
-outer function returns `Result(_, PlaceOrderError)` — type mismatch.
-The `map_error(RepoFailed)` is the conversion that lets the chain
-type-check.
+`result.try` only chains when the inner Result and the outer
+function's return type share an error type. Drop the `map_error` and
+the repo gives you `Result(_, RepoError)` while the outer function
+returns `Result(_, PlaceOrderError)`, so the types refuse to line up.
+`map_error(RepoFailed)` makes the chain type-check.
 
 ---
 
 ## Task
 
-Add a small accessor to `src/order.gleam` (the repo needs to extract
-the ID from an order to use as a dict key):
+Add an accessor to `src/order.gleam` so the repo can extract the ID
+from an order to use as a dict key:
 
 ```gleam
 pub fn id(order: Order) -> OrderId {
@@ -252,29 +246,29 @@ pub fn run(
 ```
 
 Wire `in_memory` to an actor that holds a `Dict(OrderId, Order)`. The
-actor handles `Find` and `Save` messages. The use case loads, places,
-saves.
+actor handles `Find` and `Save` messages, and the use case loads,
+places, and saves.
 
-Tests in `test/order_repo_test.gleam` (round-trip the repo) and
+Tests go in `test/order_repo_test.gleam` (round-trip the repo) and
 `test/place_order_test.gleam` (run the use case end-to-end against an
 in-memory repo).
 
 ---
 
-## Hints — what to do
+## Hints: what to do
 
-1. **Design the `OrderRepo` type before writing any code.** Two functions is the minimum (`find`, `save`). Do you also want `delete`? `list_for_customer`? Don't over-design — add when a test needs it.
-2. **Design `RepoError` next.** `NotFound` is obvious. What else? `StorageError(reason)` for network/disk failures? `CorruptRow(reason)` for "I have a row but cannot reconstruct an Order"? Keep it small and grow as needed.
-3. **`handle_msg` is the only real implementation work in `order_repo`.** Pattern-match on `Find(id, reply)` or `Save(o, reply)`, do the right `dict` op, send the result via `process.send(reply, ...)`, return `actor.continue(new_state)`. Five lines per branch.
-4. **The actor's state type goes in the type signature.** `fn handle_msg(state: Dict(OrderId, Order), msg: Msg) -> actor.Next(Dict(OrderId, Order), Msg)`. Verbose, but the compiler enforces consistency.
-5. **For `place_order.run`**, three steps in a chain:
+1. Design the `OrderRepo` type before you write any code. `find` and `save` are the minimum; add `delete` or `list_for_customer` when a test asks for them and skip them until then.
+2. `RepoError` is the next type to pin down. `NotFound` is obvious. Beyond that, `StorageError(reason)` covers network or disk failures and `CorruptRow(reason)` covers "I have a row but cannot reconstruct an Order." Keep the type compact and grow it as you go.
+3. `handle_msg` is the only real implementation work in `order_repo`. Match on `Find(id, reply)` or `Save(o, reply)`, run the matching `dict` op, send the answer with `process.send(reply, ...)`, then return `actor.continue(new_state)`. Each branch runs about five lines.
+4. Put the actor's state type in the handler signature: `fn handle_msg(state: Dict(OrderId, Order), msg: Msg) -> actor.Next(Dict(OrderId, Order), Msg)`. The signature is verbose, and the compiler keeps you honest.
+5. `place_order.run` chains these steps:
    - `use order <- result.try(repo.find(id) |> result.map_error(RepoFailed))`
    - `use #(placed, events) <- result.try(order.place(order) |> result.map_error(DomainFailed))`
    - `use _ <- result.try(repo.save(placed) |> result.map_error(RepoFailed))`
    - `Ok(#(placed, events))`
-6. **For tests**, build a small helper that creates a repo and seeds it with an order. Most tests are "set up state; call the use case; assert."
-7. **`process.call` blocks the calling process** until the actor replies (or times out). For tests, 100ms is plenty.
-8. **`result.replace_error(NotFound)`** is the cleanest way to turn a `Result(Order, Nil)` from `dict.get` into a `Result(Order, RepoError)`.
+6. For tests, write a helper that creates a repo and seeds it with an order. Most tests then set up state, call the use case, and assert against the events.
+7. `process.call` blocks the calling process until the actor replies or times out. 100ms is plenty for tests.
+8. `result.replace_error(NotFound)` is the cleanest way to turn the `Result(Order, Nil)` from `dict.get` into a `Result(Order, RepoError)`.
 
 ---
 

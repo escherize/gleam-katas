@@ -1,48 +1,42 @@
-# 09 — Kata 8: Composition Root + HTTP Boundary
+# 09. Kata 8: Composition Root + HTTP Boundary
 
 ## Concept
 
-You've built the *functional core* — pure aggregates, smart constructors,
-events as data. You've built the *application layer* — repositories, use
-cases that orchestrate. What you haven't built is the **shell**: the part
-that receives input from the outside world (HTTP, CLI, message queue),
-routes it to a use case, and translates the result back into a response.
+The functional core is done: pure aggregates, smart constructors,
+events as data. The application layer sits on top: repositories and
+use cases that orchestrate them. What's left is the shell, which takes
+input from outside (HTTP, say) and turns the result back into a
+response.
 
 This kata wires up:
 
-1. **The composition root** (`src/main.gleam`) — the one place that
-   knows how to construct the concrete adapters (in-memory repo, etc.)
-   and assemble them into a runnable app.
-2. **The HTTP boundary** — a thin handler that converts incoming HTTP
-   requests into use-case calls and converts the use case's typed
-   results into status codes + JSON bodies.
-3. **The dependency-injection pattern in real code** — a `Deps` record
-   constructed once at startup, passed to the request handler via
-   closure capture so each request has access to the things it needs.
+1. A composition root (`src/main.gleam`), the one file that knows how
+   to construct concrete adapters and assemble them into a running app.
+2. An HTTP boundary, a thin handler that turns requests into use-case
+   calls, then turns the typed result into a status code and JSON body.
+3. The DI pattern in working code, a `Deps` record built once at
+   startup and handed to the request handler through closure capture.
 
-The unifying idea: **the shell does translation, the core does
-decisions.** Decisions live in pure functions you've already written
-(`order.place`, `place_order.run`). The shell does only:
+The shell translates; the core decides. Decisions live in pure
+functions you've already written (`order.place`, `place_order.run`),
+and the shell parses strings into typed values (path → `OrderId`),
+routes requests to use-case calls, and translates typed results into
+status codes and bodies.
 
-- Parse strings → typed values (path → `OrderId`)
-- Route requests → use-case calls
-- Translate typed results → status codes + bodies
-
-If you find yourself writing a business rule in the handler, you've
-drifted from the shell back into the core. Push it down.
+A business rule in the handler means you've drifted out of the shell
+and back into the core, and the rule belongs further down.
 
 ## Why this is the FCIS payoff chapter
 
 Functional core / imperative shell is a slogan until you see the shell
-in code. Look at your `place_order.run`:
+in code. Your `place_order.run` signature looks like this:
 
 ```gleam
 pub fn run(repo, id) -> Result(#(Order, List(OrderEvent)), PlaceOrderError)
 ```
 
-That signature is *complete*. There's nothing the handler needs to know
-beyond "call this, get back one of these shapes, translate." The
-handler reads like:
+That signature is complete. The handler doesn't need to know anything
+beyond "call this, get one of these shapes back, translate":
 
 ```
 case place_order.run(repo, id) {
@@ -54,25 +48,22 @@ case place_order.run(repo, id) {
 }
 ```
 
-Every variant the use case can return becomes one HTTP response. That's
-**all** the handler does. The compiler enforces exhaustiveness — if you
-add a new error variant to `PlaceOrderError` and forget the HTTP
-mapping, the build breaks at the `case` instead of silently returning
-500 in production.
+Every variant the use case can return becomes one HTTP response, and
+the handler does nothing else. The compiler enforces exhaustiveness:
+add a new variant to `PlaceOrderError`, forget the HTTP mapping, and
+the build breaks at the `case` instead of silently returning 500 in
+production.
 
-This is what types-as-proof gets you at the boundary: the shell *cannot
-ignore* a failure mode the core cares about.
+Types-as-proof at the boundary stops the shell from quietly ignoring a
+failure mode the core cares about.
 
 ---
 
 ## New Gleam fundamentals
 
-Two libraries plus one pattern.
+### Wisp: the HTTP framework
 
-### Wisp — the HTTP framework
-
-Wisp is the standard Gleam web framework. Tiny surface area; the parts
-you'll touch:
+Wisp is the standard Gleam web framework. The surface area you'll touch:
 
 ```gleam
 import wisp.{type Request, type Response}
@@ -99,11 +90,10 @@ wisp.response(status)             // any status, no body
 wisp.string_body(response, str)   // attach a string body
 ```
 
-That's most of what you need. (For `409 Conflict`, use
-`wisp.response(409)` since Wisp doesn't ship a named constructor for
-every code.)
+For `409 Conflict`, use `wisp.response(409)`, since Wisp doesn't ship a
+named constructor for every code.
 
-### Mist — the underlying HTTP server
+### Mist: the underlying HTTP server
 
 Wisp doesn't speak HTTP itself; it delegates to Mist. The wiring at the
 top of `main`:
@@ -123,13 +113,13 @@ pub fn main() {
 }
 ```
 
-(Exact function names may drift between Mist versions; check the docs.)
+Exact function names drift between Mist versions, so the docs are the
+source of truth.
 
-### Wisp/simulate — testing in-process
+### Wisp/simulate: testing in-process
 
 You don't need a running server to test handlers. `wisp/simulate`
-constructs request values and feeds them through your handler
-function:
+builds request values and feeds them through your handler function:
 
 ```gleam
 import wisp/simulate
@@ -139,15 +129,15 @@ let response = handle_request(req)
 assert response.status == 200
 ```
 
-This is what makes the shell testable: handlers are pure functions
-from request to response (the impurity is hidden inside the Deps
-closure, and the in-memory repo provides deterministic state).
+The shell is testable because handlers are functions from request to
+response, with impurity tucked inside the Deps closure and the
+in-memory repo giving you deterministic state.
 
 ### The Deps closure pattern (DI in chill mode)
 
-The handler needs the repository. The repository can't be a global —
-each test wants its own clean one. Solution: the handler is *built*
-from the deps at composition time:
+The handler needs the repository, and the repository can't be a global
+because each test wants its own clean copy. So composition time
+assembles the handler from the deps:
 
 ```gleam
 pub fn router(deps: Deps) -> fn(Request) -> Response {
@@ -161,9 +151,9 @@ pub fn router(deps: Deps) -> fn(Request) -> Response {
 }
 ```
 
-`router` returns a function that closes over `deps`. Mist serves *that*
-function. Tests construct different deps and get a different router.
-**No DI container, no annotations, no globals.**
+`router` returns a function that closes over `deps`, and Mist serves
+that function. Each test builds different deps and gets a different
+router, with the closure acting as the container.
 
 ---
 
@@ -175,9 +165,9 @@ Add `wisp` and `mist` as dependencies:
 gleam add wisp mist
 ```
 
-Create three new source files plus tests.
+Create the source files and tests below.
 
-### 1. `src/main.gleam` — the composition root
+### 1. `src/main.gleam`: the composition root
 
 ```gleam
 pub fn main() -> Nil
@@ -190,10 +180,10 @@ Responsibilities:
 - Build the router from `Deps`.
 - Start Mist on a port.
 
-This is the *only* file that knows about concrete adapters. Below it:
-the use case takes an interface, never the concrete type.
+Only this file knows the concrete adapters. Below it the use case
+takes an interface, never the concrete type.
 
-### 2. `src/web/router.gleam` — request → response dispatcher
+### 2. `src/web/router.gleam`: request to response dispatcher
 
 ```gleam
 pub type Deps {
@@ -206,7 +196,7 @@ pub fn handle(deps: Deps, req: Request) -> Response
 Pattern-match path segments and method; dispatch to handlers; return
 `wisp.not_found()` for unmatched routes.
 
-### 3. `src/web/place_order_handler.gleam` — the one HTTP handler
+### 3. `src/web/place_order_handler.gleam`: the one HTTP handler
 
 ```gleam
 pub fn run(deps: Deps, raw_id: String) -> Response
@@ -243,21 +233,38 @@ POST /orders/:id/place
 
 ---
 
-## Hints — what to do
+## Hints: what to do
 
-1. **Build the Deps record before anything else.** It's a one-field record now (`order_repo`); growing it later is a no-op for everything that already takes `Deps`. This is the practical "DI bag" pattern from the chill-DI conversation.
-2. **The handler is a translation layer.** Anytime you find yourself doing logic in the handler beyond "call use case, map result to HTTP," push that logic down into the use case. The shell decides *response shapes*, never *business outcomes*.
-3. **Exhaustive `case` is your friend.** When you `case` on `Result(_, PlaceOrderError)`, the compiler refuses to let you forget a variant. Use that — don't fall back to a wildcard `_` until you've explicitly handled every domain case you care about. The wildcard is the catch-all for *unexpected* errors (500), not for *known* errors you didn't bother to map.
-4. **Closure capture for DI.** The router takes `Deps` and returns a `fn(Request) -> Response`. Mist serves that returned function. Each test constructs its own `Deps` and gets its own handler — no shared state, no setup/teardown.
-5. **For the JSON body**, use `gleam_json` (`gleam add gleam_json`). Build the response body as `json.object([...])`, encode to a string, pass to `wisp.json_response(body, 200)`.
-6. **Tests don't need Mist.** `wisp/simulate.request(method, path)` builds a request value; pass it to your handler function directly; assert on the response. No server, no port, no flaky network.
-7. **`main.gleam` ends with `process.sleep_forever()`** — Mist runs in a supervised process; without keeping `main` alive, the OS would exit immediately.
+1. Build the Deps record first. It's one field now (`order_repo`).
+   Growing it later costs nothing for anything that already takes
+   `Deps`, the DI-bag pattern from the chill-DI conversation.
+2. The handler is a translation layer. Doing logic in there beyond
+   "call use case, map result to HTTP" means you should push that
+   logic into the use case. The shell decides response shapes, never
+   business outcomes.
+3. Exhaustive `case` saves you. Match on `Result(_, PlaceOrderError)`
+   and the compiler refuses to let you forget a variant. A wildcard
+   `_` belongs at the end for unmodeled storage failures (500), not as
+   a substitute for handling a known error.
+4. Closure capture for DI. The router takes `Deps` and returns
+   `fn(Request) -> Response`. Mist serves the returned function. Each
+   test builds its own `Deps` and gets its own handler, so there's
+   nothing to share or tear down.
+5. For the JSON body, use `gleam_json` (`gleam add gleam_json`). Build
+   the body as `json.object([...])`, encode to a string, pass to
+   `wisp.json_response(body, 200)`.
+6. Tests don't need Mist. `wisp/simulate.request(method, path)` builds
+   a request value; pass it to your handler directly and assert on the
+   response. The handler is a function; call it like one.
+7. `main.gleam` ends with `process.sleep_forever()`. Mist runs in a
+   supervised process, so without something to keep `main` alive, the OS
+   exits immediately.
 
 ---
 
 ## Walk-through
 
-**The composition root in three lines:**
+The composition root:
 
 ```gleam
 let assert Ok(repo) = order_repo.in_memory()
@@ -265,12 +272,12 @@ let deps = Deps(order_repo: repo)
 let handle = router.handle(deps, _)  // closes over deps
 ```
 
-The third line uses Gleam's `_` placeholder for the request: `router.handle`
-takes `(deps, req)`, but Mist wants `fn(req)`. The `_` builds a closure
-that bakes in `deps` and leaves `req` as the open argument. Same pattern
-as the `Save(order, _)` capture you wrote in `order_repo`.
+The third line uses Gleam's `_` placeholder for the request.
+`router.handle` takes `(deps, req)`; Mist wants `fn(req)`. The `_`
+builds a closure that bakes in `deps` and leaves `req` open, the same
+capture trick you wrote in `order_repo` with `Save(order, _)`.
 
-**The handler's case-on-result is the table from the kata description**:
+The handler's case-on-result is the table from the kata description:
 
 ```gleam
 case place_order.run(deps.order_repo, oid) {
@@ -293,57 +300,55 @@ Each domain failure maps to the most informative HTTP code:
 | `RepoFailed(NotFound)` | 404 | No such resource |
 | Other repo errors | 500 | Storage broke; client did nothing wrong |
 
-**Why this works:** every domain-knowable failure is in the type system,
-so the boundary can translate each one to a meaningful response. Every
-unknown failure (unmodeled exceptions, network hiccups) falls through
-to 500. The boundary is *thick at the edges* (translates everything it
-can) and *thin in the middle* (does no business logic).
+Every domain-knowable failure lives in the type system, so the
+boundary translates each one into something meaningful, and anything
+unknown falls through to 500. The boundary stays thick at the edges
+and thin in the middle, translating what it can and deciding nothing.
 
 ---
 
 ## Critique
 
-**No JSON request bodies.** This kata's POST has all its inputs in the
-URL path. Real APIs send JSON bodies; parsing them adds another translation
-layer (`gleam_json` decoders → `Result(SomeStruct, JsonError)` → either
-422 with details or pass to the use case). That's a whole separate skill —
-Wisp + `gleam_json` cookbook material — and it's deferred here so the
-focus stays on the FCIS shape.
+This kata's POST has no JSON request body, since it puts all its
+inputs in the URL path. Real APIs send JSON bodies, and parsing them
+adds another translation layer, since `gleam_json` decoders give you
+`Result(SomeStruct, JsonError)`, which becomes either a 422 with
+details or a call into the use case. JSON decoding is separate skill
+territory, Wisp + `gleam_json` cookbook material, so I deferred it
+to keep the focus on the FCIS shape.
 
-**No auth, no sessions, no CSRF.** Wisp has middleware for all of these
-(`wisp.handle_head`, `wisp.csrf_known_header`, etc.). Real apps stack
-them; the kata doesn't, because the lesson is the boundary translation,
-not the security stack.
+Auth is absent. Wisp ships middleware for sessions, CSRF, and the
+rest (`wisp.handle_head`, `wisp.csrf_known_header`, and friends), and
+real apps stack them. The kata skips them because the lesson is the
+boundary translation.
 
-**No content negotiation.** We always return JSON. Real APIs check the
-`Accept` header and return JSON or HTML or text accordingly. Easy to add
-once you have the basics — pattern-match on the header, dispatch to a
-different formatter.
+The handler does no content negotiation; it always returns JSON. Real
+APIs check the `Accept` header and switch between JSON, HTML, or text.
+Adding it on top of the basics costs little: match on the header,
+dispatch to a different formatter.
 
-**`Deps` is a one-field record.** The "bag of dependencies" only earns
-its complexity when you have 3+ deps that travel together. With one,
-just passing the repo directly would be fine. We keep it because in a
-real app you'll add a `clock`, `event_bus`, `customer_repo`, and so on
-quickly — and the bag pattern absorbs those without changing function
-signatures everywhere.
+`Deps` holds one field. The dependency-bag pattern earns its
+complexity once several deps travel together; with one, passing the
+repo directly would be fine. The bag stays because in a real app
+you'll soon add a `clock`, an `event_bus`, a `customer_repo`, and the
+bag absorbs those without rippling through every signature.
 
-**No real persistence.** The composition root constructs an in-memory
-repo. Restart the server and every order is gone. A Postgres adapter
-(satisfying the same `OrderRepo` interface) would replace
-`order_repo.in_memory()` with `order_repo.postgres(pool)` — *and
-nothing else changes*. Same use case, same handler, same router. That
-substitution is the payoff Kata 6 promised; this kata is where you can
-finally feel it.
+Real persistence is missing. The composition root builds an
+in-memory repo, so a server restart drops every order. A Postgres
+adapter satisfying the same `OrderRepo` interface would swap
+`order_repo.in_memory()` for `order_repo.postgres(pool)` and nothing
+above the adapter would change. That substitution is the payoff Kata 6
+promised; here is where you feel it.
 
-**No observability.** No request logs, no metrics, no traces. Wisp's
-`wisp.handle_head` middleware can log; OpenTelemetry packages exist for
-real instrumentation. Skipped here.
+Observability is absent. Logs, metrics, and traces all go missing.
+Wisp's `wisp.handle_head` middleware can log, and OpenTelemetry
+packages exist for real instrumentation, but the kata leaves both out.
 
 ---
 
 ## DDD takeaway
 
-You now have the full vertical slice running:
+The full vertical slice runs end to end:
 
 ```
 HTTP Request
@@ -362,46 +367,45 @@ src/order_repo.gleam        ← in-memory adapter (or Postgres in prod)
 src/order.gleam             ← pure aggregate
 ```
 
-Each layer is independently testable. Each layer has its own type
-vocabulary. The dependency arrows all point inward (boundary → use
-case → domain), with the composition root constructing the concrete
-adapters and injecting them.
+Each layer is independently testable and carries its own type
+vocabulary. The dependency arrows all point inward, boundary to use
+case to domain, and the composition root builds the concrete adapters
+and hands them in.
 
-This *is* what hexagonal architecture looks like in working code. Not
-six packages and an annotation-driven container — three or four files
-and one record of values.
+Hexagonal architecture in working code amounts to a handful of files
+and a record of values, in place of six packages and an
+annotation-driven container.
 
 Combined with kata 7 (bounded contexts), kata 6 (repositories), kata 5
-(events), and the foundational katas, you can now write a backend
-service that:
+(events), and the foundational katas, you can write a backend service
+that:
 
 - Has a typed domain model with enforced invariants
 - Persists state through a swappable adapter
 - Communicates between contexts via events
 - Translates HTTP at the edge with no business logic in the handler
-- Is testable end-to-end without spinning up a database or a server
+- Supports end-to-end tests without a running database or server
 
-That's a complete architectural toolkit. Everything beyond is
-specialization — sagas for multi-context workflows, event sourcing
-for audit-heavy domains, CQRS for read/write asymmetry. None of it
-changes the shape of what you've already built; each one extends it
-in a specific direction.
+The architectural toolkit is complete. Everything beyond is
+specialization: sagas for multi-context workflows, event sourcing for
+audit-heavy domains, CQRS for read/write asymmetry. None of it changes
+the shape of what you've already built; each one extends it in a
+particular direction.
 
 ---
 
 ## Where this leaves the book
 
-You've now done the foundation kata progression *and* the integration
+You've done the foundation kata progression and the integration
 capstone:
 
 | Kata | Adds |
 |---|---|
-| 1–4 | Domain modeling — types as proof |
+| 1–4 | Domain modeling: types as proof |
 | 5 | Events as facts |
-| 6 | Repositories — domain-storage decoupling |
-| 7 | Bounded contexts — model independence |
-| 8 | HTTP boundary + composition root — the shell |
+| 6 | Repositories: domain-storage decoupling |
+| 7 | Bounded contexts: model independence |
+| 8 | HTTP boundary + composition root: the shell |
 
-Pick a real project, build it with these patterns, ship it. The book
-exists to give you the vocabulary and the muscle memory; the muscle
-memory only sticks once you do it on something real. Good luck.
+The book supplies the vocabulary; muscle memory sticks only once a
+real project carries it.

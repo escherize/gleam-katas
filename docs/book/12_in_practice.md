@@ -1,11 +1,9 @@
-# 12 — Putting It Into Practice
+# 12. Putting It Into Practice
 
-The katas teach the patterns. Knowing patterns isn't the same as knowing
-when to apply them, when to skip them, and how to talk about them with
-the people who haven't read this book. This chapter is the distilled
-experience version — what to actually do on Monday morning.
-
-It's deliberately opinionated. Disagree where your context differs.
+The katas teach the patterns. The harder skill is reading a working
+codebase and judging which of these tools earns its weight today and
+which doesn't, yet or ever. This chapter is opinionated; disagreement
+is welcome where context differs.
 
 ---
 
@@ -26,17 +24,17 @@ Start with:
 - Functions that take and return values
 - A flat `src/` directory until you feel pressure to split
 
-That's the foundation. It's also already 90% of what most apps need.
+That foundation covers most of what most apps need.
 
-**The patterns are answers to specific problems.** Apply them when you
-hit the problem. Introducing them preemptively is how DDD earns its
-reputation for ceremony.
+The patterns in this book are answers to specific problems. Apply them
+once you've hit the problem. Introducing them preemptively is how DDD
+earns its reputation for ceremony.
 
 ---
 
 ## Minimum viable DDD
 
-For a small project (under ~10k LoC, single team), what genuinely earns
+For a small project (under ~10k LoC, one team), here's what earns
 its weight:
 
 | Pattern | Worth it for...|
@@ -50,133 +48,128 @@ its weight:
 | Use cases as named functions | when the app has more than ~5 endpoints |
 | Composition root with `Deps` bag | when you have ≥3 deps that travel together |
 | `result.try` chains in use cases | as soon as use cases call multiple fallible things |
-| Idempotent event handlers | as soon as events get replayed (which they will) |
+| Idempotent event handlers | as soon as something replays events (which something will) |
 | The HTTP boundary as pure translation | every HTTP-served project |
 
-If you're not sure whether a pattern earns its weight: **wait**. The
-cost of adding a pattern later (when you feel the pain) is much lower
-than the cost of carrying its scaffolding through six months of
-not-needing-it. *Subtractive refactors are harder politically than
-additive ones.*
+When you're not sure whether a pattern earns its weight, wait. Adding
+it later, once the pain is real, costs less than carrying scaffolding
+through six months of nobody needing it, and removing an entrenched
+abstraction is politically harder than adding the missing one.
 
 ---
 
-## Where bounded contexts actually come from
+## Where bounded contexts come from
 
-You don't sit down on day one and design contexts. You don't draw
-boxes on a whiteboard before writing code.
+Contexts emerge from use. They show up when team boundaries harden,
+when two parts of the model start disagreeing about what the same
+word means, or when a one-line type change drags three people into
+the same PR. Whiteboard contexts drawn on day one are guesses; lived
+contexts are evidence.
 
-**Contexts emerge from team boundaries, organizational pressure, and
-the noticeable moment when two parts of the model start disagreeing
-about what the same word means.**
-
-Concretely, you'll know it's time to split when:
+You'll know it's time to split when:
 
 - The `Customer` type has 14 fields and any given function uses 3
 - A change to `Customer` blocks a team that doesn't care about the field you're touching
 - People start writing `BillingCustomer = Customer with extra fields` workaround types to escape the noise
 - A code review for a tiny feature requires sign-off from three teams
 
-When that happens — *that's* when you reach for the bounded contexts
-chapter and split. Not before.
+That's when you reach for the bounded contexts chapter and split.
 
-The opposite signal is just as important: **two contexts that always
-change together aren't really separate.** If `customer_billing.gleam`
-and `customer_marketing.gleam` always get touched in the same PR,
-merge them.
+The inverse holds, too. Two contexts that always change together
+aren't two contexts. If `customer_billing.gleam` and
+`customer_marketing.gleam` show up in the same PR every time, merge
+them and stop pretending.
 
 ### A note on the missing customer endpoints
 
-The kata's HTTP boundary takes `customer_id` as a string and never
-checks whether the customer exists. There are no `POST /customers`
-or `GET /customers/:id` endpoints, even though the `Customer` type
-exists in the codebase (`src/customer.gleam`). We skipped them to
-keep the kata short.
+The kata's HTTP boundary accepts `customer_id` as a string and never
+checks whether the customer exists. There are no `POST /customers` or
+`GET /customers/:id` endpoints, even though `src/customer.gleam`
+defines the type, because we cut them to keep the kata short.
 
-If you want to add them, three options for how Ordering should treat
+If you want to add them, you have to decide how Ordering should treat
 the cross-context reference:
 
-- **(a) Pre-validation** — call a `CustomerRepo.find` before accepting an order; reject unknown ids.
-- **(b) Async subscription** — Customer publishes `CustomerCreated`; Ordering keeps a local index.
-- **(c) Trust by default** — accept any id, reconcile via a periodic job if needed.
+- (a) Pre-validation: call `CustomerRepo.find` before accepting an order; reject unknown ids.
+- (b) Async subscription: Customer publishes `CustomerCreated`; Ordering keeps a local index.
+- (c) Trust by default: accept any id, reconcile via a periodic job if needed.
 
-Pick one explicitly when it matters. The kata implements (c) by
-omission — fine for a learning project, worth being deliberate about
-for anything that ships.
+Pick one deliberately when it matters. The kata implements (c) by
+omission, which is fine for a learning project but worth being honest
+about for anything that ships.
 
 ---
 
 ## Refactor moves as the system grows
 
-Concrete shape-changes you'll do, roughly in the order they tend to
-appear. Each is a response to a specific pain.
+These shape-changes show up in roughly this order, each provoked by
+its own pain.
 
 ### "My CRUD endpoints are getting hard to test"
-→ Pull the business logic into a domain function. Test that. The
-endpoint becomes a 5-line translator. *Move from "Rails controller"
-to "use case."*
+Pull the business logic into a domain function and test that directly.
+The endpoint becomes a 5-line translator, moving from Rails controller
+to use case.
 
 ### "I keep re-validating the same string in 8 places"
-→ Make it a value object. Opaque type, smart constructor, validate
-once at the boundary. *Kata 1.*
+Make it a value object: an opaque type with a smart constructor that
+validates once at the boundary. (Kata 1.)
 
 ### "I have a 12-field record and I add one more every sprint"
-→ Find the sub-clusters hiding inside. Often there's an aggregate
-root pretending to be a record, with two value objects pretending
-to be fields. *Katas 1, 2, 4.*
+Find the sub-clusters hiding inside. Often there's an aggregate root
+pretending to be a record, with two value objects pretending to be
+fields. (Katas 1, 2, 4.)
 
 ### "Every endpoint takes 9 arguments now"
-→ Introduce a `Deps` record. Pass it down. *Chill-DI bag.*
+Bundle them into a `Deps` record and pass it down. (Chill-DI bag.)
 
 ### "I want X to happen after Y but X shouldn't know about Y"
-→ Introduce an event. Y emits, X listens. *Kata 5.*
+Introduce an event that Y emits and X listens for. (Kata 5.)
 
 ### "Tests are slow because they hit the database"
-→ Repository as record of functions; pass `in_memory()` in tests.
-*Kata 6.*
+Repository as record of functions; pass `in_memory()` in tests. (Kata 6.)
 
 ### "Two teams are stepping on each other in the same module"
-→ Bounded contexts. *Kata 7.*
+Bounded contexts. (Kata 7.)
 
 ### "Restarting the server loses everything"
-→ SQLite (or Postgres) adapter, same repo interface. *Kata 9.*
+SQLite (or Postgres) adapter, same repo interface. (Kata 9.)
 
-Each move is provoked, not predicted. **You write the simple thing,
-hit the wall, refactor toward the pattern.** The wall is the
-information you didn't have on day one.
+Something concrete in the codebase provokes each move: write the
+straightforward thing, hit the wall, refactor toward the pattern.
+The wall is information unavailable on day one and unrecoverable
+from speculation.
 
 ---
 
 ## Signs you've over-applied DDD
 
-Patterns become ceremony when they outlast their reason. Warning
-signs:
+A pattern outlasts its reason and turns into ceremony. The shapes
+that line tends to take:
 
-- **A Repository interface with one implementation.** That's not a
-  port; it's a wrapper. If you're not actually swapping
-  implementations (between tests and prod, or between backends),
-  you don't need the indirection yet.
-- **Code reviews that argue whether something is an Entity or a Value
-  Object.** Productive question for 5 minutes; red flag for 30.
-- **An aggregate root with 47 methods.** It's two aggregates trying
-  to be one, or it's an aggregate that should be a domain service.
-- **Bug fixes requiring touches in 6 files because of "the
-  layering."** Layers exist to *contain* changes, not propagate
-  them. If small changes ripple wide, the layering is wrong.
-- **A Saga or Process Manager added "just in case."** These solve
-  specific scaling problems. Without the problem, they're cosplay.
-- **A Deps record with one field.** Pass the field directly. Add the
-  bag when there are 3+ things to pass.
+- A Repository interface with one implementation, a wrapper rather than
+  a port. If you aren't swapping implementations between tests and prod,
+  or between backends, the indirection isn't paying for itself yet.
+- Code reviews that argue whether something is an Entity or a Value
+  Object. Productive for five minutes, a red flag at thirty.
+- An aggregate root with 47 methods, usually two aggregates trying to
+  be one, or an aggregate that wants to be a domain service.
+- Bug fixes that touch six files because of "the layering." Layers
+  are supposed to contain changes; when small changes ripple wide, the
+  layering is doing the opposite of its job.
+- A Saga or Process Manager added "just in case." These solve specific
+  scaling problems, and without the problem they're cosplay.
+- A Deps record with one field. Just pass the field; reach for the bag
+  once there are three things travelling together.
 
-When you spot one: the fix is usually to **delete the abstraction and
-inline what it was wrapping**. Subtractive refactors are the most
-underrated tool in DDD.
+When you spot one, the fix is usually to delete the abstraction and
+inline what it was wrapping. Subtractive refactoring is the most
+underrated tool in this toolkit.
 
 ---
 
 ## Testing in a DDD-shaped pyramid
 
-The pyramid the katas implicitly built:
+The pyramid the katas built:
 
 ```
               ╱─────────╲       few, slow:
@@ -192,14 +185,14 @@ The pyramid the katas implicitly built:
     ╱──────────────────────────────╲ inputs. No IO. Milliseconds.
 ```
 
-**The pyramid only inverts when there's nothing pure to test.** The
-non-DDD shape (logic spread across HTTP handlers, ORM callbacks, DB
-triggers) forces all tests to the top because there's no clean
-domain layer to test independently. DDD's testing payoff is that
-the bottom of the pyramid actually exists.
+The pyramid only inverts when there's nothing pure to test. The
+non-DDD shape (logic smeared across HTTP handlers, ORM callbacks,
+and DB triggers) forces every test to the top, because no clean
+domain layer exists to exercise on its own. The testing payoff from
+DDD is that the bottom of the pyramid exists at all.
 
-Property-based testing belongs at the bottom: smart constructors and
-state-transition methods are perfect property targets. ("For all
+Property-based testing belongs at the bottom. Smart constructors and
+state-transition methods are obvious property targets. ("For all
 non-empty strings, `email.new` either succeeds or returns a typed
 error.")
 
@@ -207,12 +200,12 @@ error.")
 
 ## Composition root in production
 
-The `main.gleam` from kata 8 was the minimum. A real production
+The `main.gleam` from kata 8 was the minimum. A production
 composition root does more:
 
 ```gleam
 pub fn main() {
-  // 1. Read configuration from env vars — at the top, exactly once
+  // 1. Read configuration from env vars, at the top, exactly once
   let config = config.from_env()
 
   // 2. Open shared resources (DB pool, HTTP clients, secret keys)
@@ -243,38 +236,35 @@ pub fn main() {
 }
 ```
 
-A few things to internalize:
+Worth internalizing about this shape:
 
-- **All configuration enters at the top.** `config.from_env()` is the
-  *one* place env vars are read. Everything else takes typed config
-  values. No `env.get("DATABASE_URL")` scattered around — that
-  pattern always rots.
-- **Resources have known lifetimes.** The DB connection lives for the
-  process lifetime; tests open their own. There's no "lazy
-  connection pool that auto-initializes on first use" — that
-  pattern reliably produces "works locally, breaks in production"
-  bugs.
-- **Failure to initialize crashes the boot.** `let assert Ok(...)`
-  for each adapter. If the DB can't open, the process exits *now*,
-  not three minutes from now when the first request fails.
-- **Supervision (when you need it) wraps the whole thing.** For
-  long-running apps with multiple actors (event bus, scheduler,
-  background jobs), the composition root constructs a supervisor
-  and starts it. For simple HTTP servers, Mist supervises itself
-  and you don't need to.
-- **The composition root is the only file with `let assert Ok(...)`
-  on adapter construction.** Below it, everything takes already-
-  constructed values. No layer of indirection exists to "lazily
-  initialize" anything.
+- All configuration enters at the top. `config.from_env()` is the one
+  place that reads env vars, and everything else takes typed config
+  values. Scattering `env.get("DATABASE_URL")` calls through the
+  codebase always rots.
+- Resources have known lifetimes. The DB connection lives for the
+  process lifetime; tests open their own. A "lazy connection pool
+  that auto-initializes on first use" reliably produces the "works
+  locally, breaks in production" class of bug.
+- Failure to initialize crashes the boot. `let assert Ok(...)` on each
+  adapter means that if the DB can't open, the process exits now,
+  before the first request, not three minutes later when a user
+  notices.
+- Supervision, when you need it, wraps everything. For long-running
+  apps with multiple actors (event bus, scheduler, background jobs),
+  the composition root builds a supervisor and starts it. Plain HTTP
+  servers don't need this; Mist supervises itself.
+- The composition root is the only file with `let assert Ok(...)` on
+  adapter construction. Below it, everything takes already-constructed
+  values, and nothing lazily initializes anything.
 
 ---
 
 ## Talking to non-DDD colleagues
 
-Most engineers haven't read Evans. You'll be tempted to say "the
-aggregate's invariant requires that the bounded context emit a
-domain event so the anti-corruption layer can translate it" and
-watch their eyes glaze.
+Most engineers haven't read Evans. Saying "the aggregate's invariant
+requires that the bounded context emit a domain event so the
+anti-corruption layer can translate it" will reliably glaze the room.
 
 Translate down:
 
@@ -285,146 +275,143 @@ Translate down:
 | Invariant | "A rule we always want to be true" |
 | Bounded context | "The slice of the system this team owns" |
 | Value object | "A type that's just its data, like a number" |
-| Entity | "Something with an ID — same person across renames" |
+| Entity | "Something with an ID, same person across renames" |
 | Repository | "How we load and save the X" |
 | Domain event | "Something that happened, that other parts care about" |
 | Use case | "The thing one button does" |
 | Smart constructor | "The function that makes a valid one" |
 | Anti-corruption layer | "The translator between us and the other team's API" |
-| Ports and adapters | "The implementation is plugged into an interface" |
+| Ports and adapters | "The implementation plugs into an interface" |
 | Ubiquitous language | "We use the same words the business uses" |
 
-Use the jargon when it makes the conversation *shorter*. Use the plain
-version when it makes the conversation *clearer*. They are different
-tools for different audiences. **The point is the system, not the
-vocabulary**.
+Reach for jargon when it makes the conversation shorter, plain
+language when it makes the conversation clearer. The system is what
+matters; the vocabulary is the tool you use to talk about it.
 
 ---
 
 ## What's beyond the foundation
 
-The katas covered the load-bearing patterns. Five more areas worth
-knowing about, roughly in the order they show up in real systems:
+The katas covered the load-bearing patterns. Beyond them, larger
+ideas show up in production systems, roughly in this order:
 
 ### 1. Event sourcing
-Storing the event log and *deriving* current state by replaying it.
-The log becomes the source of truth; aggregate state is a
-projection. Free audit log; "what was this customer's state on June
-14?" becomes a query.
+Store the event log and derive current state by replaying it. The log
+is the source of truth, and aggregate state is just a projection of
+it. You get an audit log for free, and "what was this customer's
+state on June 14?" becomes a query instead of a forensic exercise.
 
-When to reach: high audit/compliance demand, complex history the
-team needs to reason about, "how did we get into this state?" as a
+When to reach: high audit or compliance demand; complex history the
+team has to reason about; "how did we get into this state?" as a
 recurring debugging question.
 
-When to skip: most CRUD apps. The complexity overhead is real and
-permanent.
+When to skip: most CRUD apps. The complexity overhead lasts forever.
 
-### 2. CQRS — Command/Query Responsibility Segregation
+### 2. CQRS: Command/Query Responsibility Segregation
 Separate models for writes (commands) and reads (queries). Aggregates
-handle commands; denormalized projections handle reads.
+handle the writes while denormalized projections handle the reads.
 
-When to reach: read-heavy apps where the aggregate shape isn't the
-right query shape; cross-aggregate reports; materialized views.
+When to reach: read-heavy apps where the aggregate shape is the wrong
+shape to query; cross-aggregate reports; materialized views.
 
 When to skip: writes and reads use roughly the same shape.
 
 ### 3. Sagas / Process Managers
-Coordinated multi-step workflows that span aggregates or services.
-"Place order → reserve inventory → charge card → ship → email
-receipt." Each step is a use case; the saga handles ordering,
-retry, and compensation when a step fails.
+Coordinated multi-step workflows that span aggregates or services:
+"place order, reserve inventory, charge card, ship, email receipt."
+Each step is a use case, and the saga handles sequencing, retry, and
+compensation when a step fails.
 
-When to reach: real multi-aggregate workflows, especially across
-service boundaries; need for explicit compensation logic.
+When to reach: multi-aggregate workflows that cross service
+boundaries; explicit compensation logic that the business cares
+about.
 
-When to skip: workflows that fit in a single transaction.
+When to skip: workflows that fit in one transaction.
 
 ### 4. Distributed event delivery
 Moving from in-process function calls to a message broker (Kafka,
-NATS, RabbitMQ) or BEAM distribution. **Aggregate code stays
-identical**; only the wiring at the composition root changes —
-publish to broker instead of calling handler functions directly.
+NATS, RabbitMQ) or BEAM distribution. Aggregate code stays identical;
+only the wiring at the composition root changes, publishing to the
+broker instead of calling handler functions directly.
 
-When to reach: services in different processes/data centers; need
-for at-least-once delivery, retries, dead-letter queues; consumers
-that should be independently restartable.
+When to reach: services in different processes or data centers;
+at-least-once delivery, retries, dead-letter queues; consumers that
+should be independently restartable.
 
 When to skip: monolith, or any case where a synchronous in-process
-function call is fine.
+call is fine.
 
 ### 5. Anti-corruption layers in earnest
-Real adapters between your domain and a system whose model you don't
-control. The ACL translates *their* vocabulary into *yours*, so the
-rest of your code only ever sees your types.
+Adapters between your domain and a system whose model you don't
+control. The ACL translates their vocabulary into yours, so the rest
+of your code only ever sees your types.
 
 When to reach: integrating with a system you don't own and can't
-change; multiple teams whose APIs evolve independently of you.
+change; multiple teams whose APIs evolve on their own schedule.
 
-When to skip: small project, single team, all code under your
+When to skip: small project, one team, all code under your
 control.
 
 Each of these is its own book. The kata progression is the foundation
-that makes them readable.
+that makes those books readable.
 
 ---
 
-## A few patterns that the book skipped on purpose
+## A few patterns the book skipped on purpose
 
-Worth flagging because you'll see them and wonder:
+Worth flagging because you'll run into them in other books and wonder
+where they went:
 
-- **Domain Services** — operations that don't naturally belong on any
-  one entity. ("Transfer money from account A to account B" — neither
-  account "owns" the transfer.) Idiomatic Gleam: just a top-level
-  function that takes both. The "Service" object pattern is OO baggage.
-- **Specifications** — composable query objects ("active
-  customers in California with last order > $100"). Useful in OO
-  languages where queries are objects; in Gleam, just write functions
-  that compose with `|>`.
-- **Factories as classes** — Gleam's smart constructors are factories.
-  No additional ceremony needed.
-- **Layered architecture as packages** — `application/`, `domain/`,
-  `infrastructure/`. Often correct in spirit, often expensive in
-  practice. Start flat; let real coupling pressure suggest the split.
+- Domain Services: operations that don't naturally belong on any one
+  entity. ("Transfer money from A to B", since neither account "owns"
+  the transfer.) In Gleam, that's a top-level function that takes both.
+  The "Service" object is OO baggage.
+- Specifications: composable query objects like "active customers in
+  California with last order over $100." Useful in OO languages where
+  queries have to be objects. In Gleam, write functions and compose
+  them with `|>`.
+- Factories as classes. Gleam's smart constructors already are the
+  factory, so no additional ceremony earns its keep.
+- Layered architecture as packages: `application/`, `domain/`,
+  `infrastructure/`. Often right in spirit and often expensive in
+  practice. Start flat and let coupling pressure suggest the
+  split.
 
 ---
 
 ## A few things that aren't DDD but pair well with it
 
-- **Property-based testing** for smart constructors and pure domain
+- Property-based testing for smart constructors and pure domain
   functions. `gleam_qcheck` or similar.
-- **Snapshot testing** for stable JSON outputs (HTTP responses,
-  events). Catches accidental shape changes.
-- **Schema migrations** as ordered SQL files (`dbmate`, `sqitch`,
-  `gorrion`). Plain SQL keeps you honest.
-- **OpenTelemetry traces** through the use case → handler → adapter
-  call graph. The DDD layering makes the trace structure honest.
-- **Static dependency-graph linting** to catch the moment when
-  Ordering accidentally imports something from Shipping.
+- Snapshot testing for stable JSON outputs like HTTP responses and
+  events. Catches accidental shape changes you'd otherwise notice in
+  production.
+- Schema migrations as ordered SQL files (`dbmate`, `sqitch`,
+  `gorrion`). Plain SQL keeps you honest about what the database
+  does.
+- OpenTelemetry traces through the use case → handler → adapter call
+  graph. The DDD layering makes the trace structure read like the
+  code.
+- Static dependency-graph linting, so you find out the moment Ordering
+  accidentally imports something from Shipping.
 
 ---
 
 ## A short closing
 
-You now have:
+By this point you have the vocabulary, the patterns in idiomatic
+Gleam, and some judgment about when to use them and when to wait.
+You've also seen the Gleam-specific moves that keep each pattern
+small: records of functions in place of interface hierarchies, smart
+constructors in place of Factory classes, closures in place of DI
+containers, modules in place of multi-package layouts.
 
-- The vocabulary
-- The patterns, in idiomatic Gleam
-- The judgment about when to use them and when to wait
-- The Gleam-specific tricks that keep each pattern small (records of
-  functions over interface hierarchies, smart constructors over
-  Factory classes, closures over DI containers, modules over
-  multi-package layouts)
+What a book can't give you is the muscle memory. That comes from
+doing it on a working project: hitting friction, choosing to introduce
+or remove a pattern, watching the result, and updating your mental
+model from what happened.
 
-The thing this book can't give you is the muscle memory. That comes
-from doing it on a real project, hitting the friction, deciding to
-introduce or remove a pattern, watching the result, and updating
-your mental model.
-
-Pick something small. Build it with these tools. You'll discover that
-80% of what you needed was already in the first four chapters, and
-the rest of the toolkit sits in the back of your mind, waiting for
-the specific problem that justifies it.
-
-That's the whole game.
-
-Go ship something.
+Build something small with these tools and ship it. Most of what the
+project needs was already in the first four chapters, and the rest of
+the toolkit sits in the back of the mind, available when a problem
+justifies pulling it out.

@@ -1,32 +1,30 @@
-# 08 — Kata 7: Bounded Contexts
+# 08. Kata 7: Bounded Contexts
 
 ## Concept
 
-You've built one bounded context — call it **Ordering**. Customers,
-orders, prices. The aggregate is `Order`; the use case is
-`place_order`; the repo is `OrderRepo`. Everything in `src/` so far
-belongs to that one context.
+So far you've worked inside one bounded context, **Ordering**,
+with `Order` as the aggregate, `place_order` as the use case, and
+`OrderRepo` as the repo. Everything in `src/` belongs to that
+context.
 
-Real systems have more than one. The warehouse team needs to ship
-placed orders. Marketing wants to segment customers by lifetime value.
-Finance wants to reconcile payments against orders. Each has its own
-team, its own data, its own vocabulary, its own rate of change.
+Real systems grow more. Warehouse ships the placed orders while
+Marketing segments customers by lifetime value and Finance
+reconciles payments. Each team owns its own data and vocabulary,
+and moves at its own pace.
 
-The DDD answer: **each is a separate bounded context, with its own
-model.** They share concepts (a customer in Ordering and a customer in
-Marketing are the same human), but the *data* each context holds about
-that customer is wildly different. Forcing them into one type is the
-single fastest way to wreck a domain model:
+DDD turns each one into a separate bounded context with its own
+model. They share concepts (a customer in Ordering is the same
+human as a customer in Marketing), but the *data* each context
+holds about that customer diverges. Force them into one type and
+the model dies fast:
 
 - A `Customer` type with `name`, `email`, `segment`, `ltv`, `last_campaign`, `default_address`, `loyalty_tier`, `risk_flags`...
-- Every change ripples through every team.
-- Every read pulls fields nobody on this team cares about.
-- Migrations are nightmares. Privacy boundaries collapse. Test fixtures balloon.
+- Changes ripple through every team, reads pull fields nobody on this team cares about, and migrations turn into multi-team negotiations.
+- The privacy story collapses the moment Marketing's PII fields end up in Ordering's fixtures.
 
-The fix isn't "stop adding fields." The fix is to recognize that
-"Customer in Ordering" and "Customer in Marketing" are *different
-concepts that share an ID*, not the same concept. Different types.
-Different storage. Communicate via events.
+"Customer in Ordering" and "Customer in Marketing" are different
+concepts that happen to share an ID. Each gets its own type and
+its own storage, and they talk through events.
 
 ## The thesis kata 7 demonstrates
 
@@ -34,17 +32,18 @@ Different storage. Communicate via events.
 >
 > Shipping reacts to Ordering's events. Ordering just emits them.
 
-That's the whole lesson. Asymmetric dependency. Events as the integration contract. Two contexts collaborating without sharing types.
+Events do the integration work, and neither context shares a type
+with the other.
 
-In code: `src/shipping/*` imports `order.OrderEvent` and
-`order.OrderId`. `src/order.gleam` imports nothing from `shipping/`.
-Grep proves it.
+In code, `src/shipping/*` imports `order.OrderEvent` and
+`order.OrderId`, while `src/order.gleam` imports nothing from
+`shipping/`. Grep proves the asymmetry.
 
 ---
 
 ## New Gleam fundamentals
 
-Almost nothing new — kata 7 is mostly about *organization*, not new machinery.
+Kata 7 is about *organization*, so the new machinery is minimal.
 
 ### Folders as namespace boundaries
 
@@ -55,34 +54,35 @@ exports a module called `shipping/shipment`. Other code imports it as:
 import shipping/shipment.{type Shipment}
 ```
 
-The folder *is* the namespace. The fact that this file lives in a
-`shipping/` directory **is** what makes it part of the Shipping
-bounded context. There's no other ceremony.
+The folder *is* the namespace. Living inside `shipping/` is what
+makes a file part of the Shipping bounded context, and no other
+ceremony applies.
 
-### Type aliases for function types (mildly useful)
+### Type aliases for function types
 
-If you want to give a function-type a name (e.g., for the event
-handler signature), Gleam lets you:
+To name a function type, say the event handler signature, Gleam
+lets you write:
 
 ```gleam
 pub type OrderEventHandler =
   fn(order.OrderEvent) -> Result(Nil, ShipmentError)
 ```
 
-Now you can write `handler: OrderEventHandler` instead of repeating
-the long signature. Optional — sometimes clarity, sometimes overkill.
+Now `handler: OrderEventHandler` stands in for the long signature.
+The alias is optional and worth it only when it clarifies the
+calling code.
 
-That's it for new mechanics. Everything else is patterns you already
-know: opaque types, smart constructors, records of functions, modules.
+That's the new mechanics. The rest is patterns you already use:
+opaque types, smart constructors, records of functions, modules.
 
 ---
 
-## Task — one file per step
+## Task: one file per step
 
-Create five new files. Each does one job; reading the kata top-down is
-the same as reading the files in this order.
+Create five new files. Each does one job, and reading the kata
+top-down matches reading the files in order.
 
-### 1. `src/shipping/shipment.gleam` — the Shipping aggregate
+### 1. `src/shipping/shipment.gleam`: the Shipping aggregate
 
 ```gleam
 pub opaque type ShipmentId {
@@ -117,10 +117,11 @@ pub fn mark_shipped(s: Shipment) -> Result(Shipment, ShipmentError)
 pub fn mark_delivered(s: Shipment) -> Result(Shipment, ShipmentError)
 ```
 
-Same patterns as `Order`. No events for now (could add them; kata 7
-focuses on the cross-context flow, not re-doing kata 5).
+The shape mirrors `Order`. This kata skips events because kata 7
+focuses on the cross-context flow, and kata 5 already covered how
+aggregates emit events.
 
-### 2. `src/shipping/shipment_repo.gleam` — the Shipping repository
+### 2. `src/shipping/shipment_repo.gleam`: the Shipping repository
 
 ```gleam
 pub type RepoError {
@@ -138,12 +139,12 @@ pub type ShipmentRepo {
 pub fn in_memory() -> Result(ShipmentRepo, actor.StartError)
 ```
 
-Same record-of-functions shape as `OrderRepo`. Note the extra
-`find_by_order` — the use case ("did this order already produce a
-shipment?") needs lookup by order_id, not just shipment_id. Repos
-expose what their callers need.
+The shape mirrors `OrderRepo` and adds one new `find_by_order`
+query, because the use case asks "did this order already produce a
+shipment?", which is a lookup by order_id rather than by
+shipment_id. Repos expose what their callers need.
 
-### 3. `src/shipping/handle_order_placed.gleam` — the cross-context handler
+### 3. `src/shipping/handle_order_placed.gleam`: the cross-context handler
 
 ```gleam
 pub type HandleError {
@@ -159,23 +160,24 @@ pub fn run(
 ) -> Result(Nil, HandleError)
 ```
 
-The handler:
+The handler inspects the event and acts only on `OrderPlaced`. It
+asks the repo whether a shipment already exists for this order,
+since the bus can replay events and the handler has to stay idempotent.
+If none exists, it builds a fresh `Shipment` via `shipment.new` and
+saves it through `repo.save`.
 
-1. Inspects the event. Only acts on `OrderPlaced`; ignores other variants.
-2. Checks: does a shipment already exist for this order? (Idempotency — events can be replayed.)
-3. If not, constructs a new `Shipment` via `shipment.new`, saves via `repo.save`.
+This module imports `order` types (`OrderEvent`, `OrderId`) along
+with `shipping/shipment` and `shipping/shipment_repo`. It's the one
+place where Ordering and Shipping meet.
 
-This module **imports `order` types** (for `OrderEvent`, `OrderId`)
-and `shipping/shipment` and `shipping/shipment_repo`. It is the
-*only* place where Ordering and Shipping touch.
+### 4. `test/shipping/shipment_test.gleam`: Shipping aggregate tests
 
-### 4. `test/shipping/shipment_test.gleam` — Shipping aggregate tests
+Standard aggregate tests cover construction, the happy-path
+transitions, and the error branches when the status is wrong.
 
-Standard aggregate tests: construct, transition, error cases.
+### 5. `test/shipping/handle_order_placed_test.gleam`: the integration spec
 
-### 5. `test/shipping/handle_order_placed_test.gleam` — the integration spec
-
-The test that proves the cross-context flow works:
+One test proves the cross-context flow works:
 
 ```gleam
 pub fn order_placed_creates_shipment_test() {
@@ -200,37 +202,37 @@ pub fn order_placed_creates_shipment_test() {
 }
 ```
 
-That's the full vertical slice of two contexts collaborating — and
-notice that no module here imports anything *from* `shipping/` into
-`order` or vice versa.
+The test runs a full vertical slice of two contexts collaborating,
+and no module here imports anything *from* `shipping/` into `order`
+or the reverse.
 
 ---
 
-## Hints — what to do
+## Hints: what to do
 
-1. **Build it in the order listed.** Aggregate first (no dependencies on the rest). Repo next (depends on aggregate + actor). Handler last (depends on aggregate, repo, and Ordering's `OrderEvent`).
-2. **`Shipment` is structurally similar to `Order` but simpler.** No lines, no totals — just an ID, a foreign-key-ish `OrderId`, a status enum. State transitions check the current status.
-3. **`shipment_repo.in_memory()` is almost a copy of `order_repo.in_memory()`** — same actor scaffold, just with three message variants instead of two (`Find`, `Save`, `FindByOrder`).
-4. **The handler must be idempotent.** Pattern-match on the event; if it's not `OrderPlaced`, return `Ok(Nil)` (silently ignore). If it is, check `find_by_order` first — if a shipment already exists, return `Ok(Nil)` or `Error(AlreadyShipped)` depending on your taste. Only `save` if nothing's there.
-5. **The handler takes the `ShipmentId` from the outside.** Don't generate IDs inside the handler — that makes it deterministic and testable. Composition root or test passes a fresh ID in.
-6. **Imports tell the story.** When you've finished, check:
+1. Build in the order listed: aggregate first (no dependencies), repo next (depends on the aggregate and the actor scaffold), handler last (pulls in the aggregate, the repo, and Ordering's `OrderEvent`).
+2. `Shipment` looks like `Order` with the hard parts removed. There are no lines or totals, just an ID, an `OrderId` acting as a foreign key, and a status enum. State transitions check the current status.
+3. `shipment_repo.in_memory()` mirrors `order_repo.in_memory()` on the same actor scaffold; the message type grows one variant to support `FindByOrder`.
+4. Make the handler idempotent. Pattern-match the event. Anything that isn't `OrderPlaced` returns `Ok(Nil)` and bails. For `OrderPlaced`, call `find_by_order` first, because if a shipment already exists you return `Ok(Nil)` (or `Error(AlreadyShipped)`, your call). Only `save` when nothing's there.
+5. Pass the `ShipmentId` in from outside. Generating IDs inside the handler makes it nondeterministic and harder to test, so let the composition root or the test supply a fresh one.
+6. Imports tell the story. When you finish, check:
    - `src/shipping/handle_order_placed.gleam` should `import order.{type OrderEvent, OrderPlaced, type OrderId}`
    - `src/order.gleam` should have **zero** imports starting with `shipping/`
    - If you have to import the wrong direction, the design is upside down.
-7. **For `mark_shipped` / `mark_delivered`**: `case s.status { Pending -> Ok(Shipment(..s, status: Shipped)) ; _ -> Error(CannotShipNonPending) }`. Same pattern you used in `Order.place`.
+7. For `mark_shipped` / `mark_delivered`: `case s.status { Pending -> Ok(Shipment(..s, status: Shipped)) ; _ -> Error(CannotShipNonPending) }`, which is the same pattern you used in `Order.place`.
 
 ---
 
 ## Walk-through
 
-**The directory structure *is* the bounded context.** You don't need a
-`Context` type or a `BoundedContext` annotation or a config file
-declaring boundaries. You have `src/shipping/`. The folder *is* the
-boundary. Tools (search, grep, dependency graphs) understand it for
-free.
+The directory structure *is* the bounded context. There's no
+`Context` type and no `BoundedContext` annotation declaring
+boundaries in a config file. You have `src/shipping/`, and the
+folder is the boundary. Grep and dependency-graph tools see the
+boundary without further input.
 
-**`handle_order_placed` is the only file with both worlds in scope.**
-Its imports are the entire integration story:
+`handle_order_placed` is the only file with both worlds in scope.
+Its imports tell the integration story:
 
 ```gleam
 import order.{type OrderEvent, OrderPlaced}     // ← Ordering's published events
@@ -238,46 +240,48 @@ import shipping/shipment.{type ShipmentId}       // ← Shipping's own types
 import shipping/shipment_repo.{type ShipmentRepo, NotFound}
 ```
 
-This module sits *in* the Shipping context (path: `shipping/`) but
-*translates* events from Ordering. It's where the cross-context
-relationship is named, in code, in one place. Move this file and the
+The module sits *inside* the Shipping context (path: `shipping/`)
+but *translates* events from Ordering. This file names the
+cross-context relationship in code, in one place. Move it and the
 relationship moves with it.
 
-**Ordering doesn't get touched.** No new imports in `src/order.gleam`,
-no new methods, no callbacks. Ordering keeps emitting `OrderPlaced`
-events; whether anyone's listening is none of its business. You could
-delete the entire `shipping/` directory and `src/order.gleam` would
-still compile and work.
+Nothing touches Ordering. `src/order.gleam` gains no new imports
+and no new methods or callbacks.
+Ordering keeps emitting `OrderPlaced` events; whether anyone's
+listening is none of its business. Delete the `shipping/` directory
+and `src/order.gleam` still compiles and works.
 
-**The test asserts the integration without testing the bus.** No event
-bus type appears. The test calls `place_order.run` to get events,
-iterates them, calls the Shipping handler. That *is* the bus, in two
-lines. If you want a fancier bus (async, multiple subscribers per
-event, retry on failure), you can write one — but the kata works
-without it.
+The test asserts the integration without testing the bus. No event
+bus type appears. The test calls `place_order.run`, takes the
+events back, and hands them to the Shipping handler. Those two
+lines *are* the bus. A fancier one with async delivery, multiple
+subscribers, or retry on failure is a separate project, and the
+kata works fine without it.
 
-**Idempotency matters.** The `find_by_order` check before saving makes
-the handler safe to replay. Real event delivery is at-least-once;
-handlers that aren't idempotent eventually create duplicates. This is
-free at the application layer when the check is in the handler.
+The `find_by_order` check before saving makes the handler safe to
+replay. Real event delivery is at-least-once, and handlers that
+aren't idempotent end up creating duplicates, so putting the check
+in the handler buys idempotency at the application layer for free.
 
 ---
 
 ## Critique
 
-**Where do `money` and `email` live?** Both contexts use them. Two
-honest answers:
+Where do `money` and `email` live? Both contexts use them, so
+there are a couple of honest answers:
 
-- **Shared kernel** (current setup) — they're at the top level (`src/email.gleam`, `src/money.gleam`), both contexts import them. Right call when the value objects are stable, small, and behaviorally identical across contexts.
-- **Duplicate** — each context defines its own. Right call when contexts evolve at different rates or want different behavior on the same concept (e.g., Marketing might add `+ tax_jurisdiction` to its money type for compliance reasons).
+- **Shared kernel** (current setup): they sit at the top level (`src/email.gleam`, `src/money.gleam`) and both contexts import them. Good call when the value objects are small, stable, and behave the same wherever they go.
+- **Duplicate**: each context defines its own. Good call when contexts evolve at different rates or need different behavior on the same concept (Marketing might tack `tax_jurisdiction` onto its money type for compliance).
 
-For a kata: shared kernel. For a real system: duplicate as soon as you feel the pull.
+A kata sticks with the shared kernel. A real system duplicates as
+soon as you feel the pull.
 
-**No anti-corruption layer.** The handler imports `order.OrderEvent`
-directly. If Ordering's event vocabulary changes, the handler breaks
-at compile time. That's a feature *if* the two contexts are
-maintained by collaborating teams; a bug *if* they're independent.
-Then you'd add a tiny adapter:
+The kata ships without an anti-corruption layer. The handler
+imports `order.OrderEvent` directly, so if Ordering's event
+vocabulary changes the handler breaks at compile time. That's a
+feature when both contexts share a team who can fix both sides in
+one PR, and a bug when the teams are independent. In the
+independent case, add a tiny adapter:
 
 ```gleam
 // src/shipping/order_event_adapter.gleam
@@ -293,25 +297,29 @@ pub fn from_order_event(e: order.OrderEvent) -> Option(ShippingTrigger) {
 }
 ```
 
-Now `handle_order_placed` deals only in `ShippingTrigger`. Ordering can rename, add, or remove event variants and only `order_event_adapter.gleam` needs to update. That's an Anti-Corruption Layer in 8 lines. **Add it when you actually need it, not preemptively.**
+Now `handle_order_placed` deals only in `ShippingTrigger`. Ordering
+can rename, add, or remove event variants and only
+`order_event_adapter.gleam` updates. That's an Anti-Corruption Layer
+in eight lines, and you should add it once you need it, not before.
 
-**No real event bus.** The "bus" is the composition root iterating
-events and calling handlers. That's fine for a single process with
-synchronous handlers. Becomes inadequate when you want async delivery
-across services, persistent retry, dead-letter queues, etc. — at which
-point you reach for a real broker (RabbitMQ, NATS, Kafka, BEAM
-distribution + persistent_term). The application code stays the same;
-the wiring changes.
+There's no real event bus here. The "bus" is the composition root
+iterating events and calling handlers. That's fine for a single
+process with synchronous handlers. It runs out of room when you want async
+delivery across services, persistent retry, or dead-letter queues,
+at which point you reach for a real broker (RabbitMQ, NATS, Kafka,
+BEAM distribution backed by persistent_term). The application code
+stays the same; the wiring changes.
 
-**`Shipment` doesn't emit events.** Maybe it should — `ShipmentShipped`
-would be useful for `tracking@shipping.example.com` notifications
-and Finance reconciliation. Skipped here to keep the kata focused on
-the cross-context flow rather than re-doing kata 5.
+`Shipment` doesn't emit events. Maybe it should, since a `ShipmentShipped`
+event would feed tracking notifications and Finance reconciliation.
+The kata skips it so the focus stays on the cross-context flow instead of
+redoing kata 5.
 
-**No process manager / saga.** A full "ship and bill" flow might be:
-`OrderPlaced → CreateShipment → ChargeCard → ConfirmShipment`.
-Coordinating that across contexts is a saga's job. Out of scope; the
-pattern is "one handler per event, idempotent, no orchestration."
+The kata also skips process managers and sagas. A full "ship and bill" flow might look
+like `OrderPlaced → CreateShipment → ChargeCard → ConfirmShipment`,
+and coordinating that across contexts is a saga's job, out of
+scope here. The pattern in this kata is one idempotent handler per
+event, with no orchestration on top.
 
 ---
 
@@ -320,41 +328,41 @@ pattern is "one handler per event, idempotent, no orchestration."
 What you've built:
 
 - Two bounded contexts in one process, communicating via events
-- An asymmetric dependency arrow that the file tree visibly enforces
-- A small, idempotent integration handler that's the *only* place either context names the other
-- A test that exercises the full cross-context flow without mocking
-- A pattern that scales: add Marketing? `src/marketing/`. Add Finance? `src/finance/`. Each follows the same shape.
+- An asymmetric dependency arrow that the file tree makes visible
+- An idempotent integration handler, the only file where either context names the other
+- A test that exercises the full cross-context flow without mocks
+- A pattern that scales: add Marketing? `src/marketing/`. Add Finance? `src/finance/`. The shape repeats every time.
 
 What it teaches:
 
-- **The boundary is in the dependency graph, not the documentation.** Comments and team agreements drift; imports don't.
-- **Events are the integration contract.** They're versioned, named, immutable. Changing an event signature is a public API change. Changing a domain type is a private refactor.
-- **"Same word, different model" is OK.** It's better than OK — it's *correct*. The shared concept is the ID; the data each context cares about is local.
-- **Distributed systems use the same model**, just with a network in between. A Shipping *service* in another process or another datacenter would have the same code shape — different transport, same domain logic. That's why "monolith with bounded contexts" and "microservices with bounded contexts" are easier to switch between than the rhetoric implies.
+- The boundary lives in the dependency graph, not in the documentation. Comments and team agreements drift; imports don't.
+- Events are the integration contract: named, versioned, with payloads nobody mutates after the fact. Changing an event signature is a public API change, while changing a domain type is a private refactor.
+- "Same word, different model" is the right answer. The shared concept is the ID; each context owns its own view of the data.
+- Distributed systems use the same model with a network in the middle. A Shipping *service* in another process or datacenter has the same code shape, just with a different transport and identical domain logic. That's why "monolith with bounded contexts" and "microservices with bounded contexts" swap more easily than the marketing language suggests.
 
 ---
 
 ## Where this leaves the book
 
-You now have, in roughly this order of value:
+What's now in your toolkit, in order of payoff:
 
 1. Types as the load-bearing structure of the domain (katas 1–4)
 2. Events as facts that escape the aggregate (kata 5)
 3. Repositories that hide storage from the domain (kata 6)
 4. Bounded contexts as the unit of model independence (kata 7)
 
-That's the core of DDD — the strategic patterns (contexts, ubiquitous
-language, events) and the tactical ones (entities, value objects,
-aggregates, repositories), all in idiomatic Gleam, none of the
-ceremony.
+That covers the core of DDD: the strategic patterns (contexts,
+ubiquitous language, events) and the tactical ones (entities, value
+objects, aggregates, repositories) in idiomatic Gleam, with none of
+the ceremony.
 
 What's beyond the book:
 
-- **Sagas / process managers** — orchestrating multi-aggregate, multi-context workflows
-- **Distributed event delivery** — moving from "in-process function calls" to message brokers or BEAM distribution
-- **Read models / CQRS** — denormalized projections optimized for queries, fed by the event stream
-- **Event sourcing** — making the event log the source of truth, deriving state by replay
-- **Anti-corruption layers in earnest** — when one context has to integrate with a foreign system whose model you can't change
+- Sagas and process managers: orchestrating workflows that span aggregates and contexts
+- Distributed event delivery: moving from in-process function calls to message brokers or BEAM distribution
+- Read models and CQRS: denormalized projections that the event stream feeds and queries hit
+- Event sourcing: making the event log the source of truth and deriving state by replay
+- Anti-corruption layers for real: when a context has to integrate with a foreign system whose model you can't change
 
-Each of those is its own book. The kata progression you've finished is
-the foundation that makes them readable.
+Each is its own book. The kata progression you've finished is the
+foundation that makes those books readable.
