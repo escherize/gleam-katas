@@ -128,40 +128,21 @@ sequences of commands (see "Scenario testing" below).
 
 ## Walk-through
 
-`new` is total. It returns a tuple of the new draft order and an event
-list with one `OrderCreated`.
+`new` is total: a tuple of the new draft order and an event list with
+one `OrderCreated`. `add_line` builds its event in the `Ok` branch
+only, since the `use <-` guards short-circuit on failure and a failure
+isn't a fact.
 
-`add_line` builds its event in the `Ok` branch only. The `use <-`
-guards short-circuit on failure, and past them a few lines finish the
-job by producing the new line, the updated order, and the event.
-Failures return `Error(...)` directly and never construct an event list,
-because a failure isn't a fact.
-
-`place` does the work the other two avoid:
-
-```gleam
-use <- no_modify_placed(order)        // guard 1
-case order.lines {
-  [] -> Error(CannotPlaceEmptyOrder)  // guard 2 (with specific error)
-  _ -> {
-    use t <- result.try(total(order)) // chain — total can fail
-    let placed = Order(..order, status: Placed)
-    Ok(#(placed, [OrderPlaced(order.id, t)]))
-  }
-}
-```
-
-Failure layers stack here: the status check via a zero-arg
-`use <-`, the empty-lines check via a `case` returning `Error`
-directly, and the total computation via `use t <- result.try`. Each
-short-circuits independently, and construction of the placed order and
-its event happens only after every layer passes. The chained-failure
-machinery from earlier chapters exists for exactly this shape.
+`place` is the chapter's showpiece (the code block in
+"result.try chaining" above): a zero-arg `use <-` for the status guard,
+a `case` for the empty-lines guard, and a `use t <- result.try` for
+the fallible total. Three failure layers stack independently; the
+placed-order record and its event come together only after every layer
+passes.
 
 `total` is `pub` because callers want to display a running total before
-placing, and the scenario tests need to assert on expected totals.
-Exposing it doesn't break the aggregate boundary; it's a pure read and
-can't put the order into a bad state.
+placing, and the scenario tests assert on expected totals. Exposing it
+doesn't break the aggregate boundary, since it's a pure read.
 
 ---
 
@@ -229,7 +210,7 @@ pub fn add_line_after_place_fails_test() {
   let cmds = [
     AddLine("WIDGET", 1, usd(50)),
     Place,
-    AddLine("GADGET", 1, usd(50)),  // fails — order is placed
+    AddLine("GADGET", 1, usd(50)),  // fails because order is placed
   ]
   assert run(empty_draft_order(), cmds)
     == Error(order.CannotModifyPlacedOrder)
@@ -247,23 +228,23 @@ behavior rather than just its per-operation correctness.
 
 ---
 
-## DDD takeaway
+## Takeaway
 
-You've reached the natural endpoint of the aggregate-as-pure-function
-trajectory:
+The aggregate-as-pure-function trajectory reaches its natural
+endpoint:
 
 > `aggregate × command → Result(#(new_aggregate, events), error)`
 
-That signature is the central abstraction every CQRS and event-sourcing
-framework reaches for, and you wrote it without a framework in about a
-hundred lines of Gleam, with the type system enforcing every invariant.
+That signature is the central abstraction every CQRS and
+event-sourcing framework reaches for, written here without a framework
+in about a hundred lines of Gleam, with the type system enforcing
+every invariant.
 
-In a richer system you wouldn't return events to the caller. You'd
-publish them to an event bus and forget about them, and other bounded
-contexts would subscribe and react. Your `Order` aggregate stays
-unaware that a `Shipping` context exists, yet shipping still happens
-because shipping listens for `OrderPlaced`. That decoupling earns events
-their place as a first-class concept.
+A richer system wouldn't return events to the caller. It would
+publish to a bus and let other bounded contexts subscribe, so `Order`
+stays unaware that `Shipping` exists yet shipping still happens
+because shipping listens for `OrderPlaced`. That decoupling earns
+events their place as a first-class concept.
 
 ---
 

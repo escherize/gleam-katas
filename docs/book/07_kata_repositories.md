@@ -272,3 +272,153 @@ in-memory repo).
 
 ---
 
+## Walk-through
+
+The actor's message type does the design work. Each request becomes a
+variant, and each variant carries a typed reply `Subject` so the actor
+knows where to send the answer:
+
+```gleam
+pub type Msg {
+  Find(id: OrderId, reply_to: Subject(Result(Order, RepoError)))
+  Save(order: Order, reply_to: Subject(Result(Nil, RepoError)))
+}
+```
+
+The reply types differ by message. The compiler refuses to let `Find`
+ever reply with `Nil` or `Save` with an `Order`, so the wiring stays
+honest without runtime checks.
+
+`handle_msg` is then small:
+
+```gleam
+fn handle_msg(store, msg) {
+  case msg {
+    Find(id:, reply_to:) -> {
+      let r = store |> dict.get(id) |> result.replace_error(NotFound)
+      process.send(reply_to, r)
+      actor.continue(store)
+    }
+    Save(order:, reply_to:) -> {
+      let new_state = dict.insert(store, order.id(order), order)
+      process.send(reply_to, Ok(Nil))
+      actor.continue(new_state)
+    }
+  }
+}
+```
+
+`result.replace_error(NotFound)` swaps the `Nil` from `dict.get` for
+the repo's vocabulary in one call, since the missing-key case carries
+no detail worth preserving.
+
+`in_memory` starts the actor and bridges its subject into the
+`OrderRepo` record, so callers see two function fields and never learn
+an actor exists:
+
+```gleam
+pub fn in_memory() -> Result(OrderRepo, actor.StartError) {
+  use started <- result.try(
+    actor.new(dict.new())
+    |> actor.on_message(handle_msg)
+    |> actor.start,
+  )
+  let pid = started.data
+  Ok(OrderRepo(
+    find: fn(id) { process.call(pid, 100, fn(reply) { Find(id, reply) }) },
+    save: fn(o)  { process.call(pid, 100, fn(reply) { Save(o, reply) }) },
+  ))
+}
+```
+
+The `fn(reply) { Find(id, reply) }` shape is `process.call`'s contract:
+it hands you a fresh reply subject, you embed it in the outgoing
+message, and `process.call` blocks until the actor sends a response
+there or 100ms passes.
+
+`place_order.run` is the payoff:
+
+```gleam
+pub fn run(repo, id) {
+  use order <- result.try(repo.find(id) |> result.map_error(RepoFailed))
+  use #(placed, events) <- result.try(
+    order.place(order) |> result.map_error(DomainFailed),
+  )
+  use _ <- result.try(repo.save(placed) |> result.map_error(RepoFailed))
+  Ok(#(placed, events))
+}
+```
+
+Three `result.try` lines, each wrapping the layer-specific error in a
+`PlaceOrderError` variant. The function reads top-to-bottom like a
+checklist: load, transition, save, return. Nothing here knows the repo
+is an actor or that the actor holds a `Dict`, so swapping in a SQLite
+repo (kata 9) doesn't move a line.
+
+The `map_error(RepoFailed)` calls do the type-juggling the
+"constructors as functions" detour set up. Without them the inner
+`Result(_, RepoError)` wouldn't fit a chain expecting
+`Result(_, PlaceOrderError)`.
+
+---
+
+## Critique
+
+The 100ms timeout fits an in-memory dict and nothing else. A real I/O
+repo would take the timeout as config, since "long enough for the slow
+case, short enough that hung backends don't pile up callers" is a
+deployment decision rather than a code one.
+
+The actor itself is a teaching scaffold. It serializes every request
+through one mailbox, which a `Dict` needs and a SQL connection pool
+already provides. A SQLite or Postgres repo drops the actor entirely;
+the in-memory dict has nowhere else to live, so it borrows one.
+
+`StorageError(String)` is a placeholder. A real repo distinguishes
+"connection lost," "constraint violated," and "decode failed" because
+callers want to react differently. Grow the variant set as the
+production adapter forces the cases.
+
+`list_all` is `pub` only because integration tests want to read
+everything back. Production repos almost never expose it directly,
+since returning the whole table is an outage waiting to happen.
+Filtered or paginated queries earn the field; an unbounded list
+doesn't.
+
+`order.id(order)` is the one accessor that crosses the aggregate's
+opaque-type wall for the repo's benefit, and it's the right size: the
+repo needs a key to store under, and an explicit accessor is cheaper
+than exposing the record. Kata 9 extends the same idea
+(`snapshot`/`restore`) when the repo needs the full state.
+
+---
+
+## Takeaway
+
+The aggregate stayed pure. `order.place` still takes an `Order` and
+returns `Result(#(Order, List(OrderEvent)), OrderError)`, the same
+signature it had after kata 5. Nothing in `order.gleam` learned that
+storage exists.
+
+What the repository bought, in one chapter: a use case that takes an
+interface and swaps adapters in kata 9 without moving, tests that
+build a fresh in-memory backend per case without mocks, and layer
+errors that stay distinct all the way to the HTTP boundary where
+`RepoFailed(NotFound)` becomes a 404 and `DomainFailed(CannotPlaceEmptyOrder)`
+becomes a 422.
+
+The use case is the application layer the rest of the book builds on.
+HTTP handlers (kata 8) translate requests into use-case calls;
+bounded contexts (kata 7) react to the events use cases return. Its
+signature reads like a sentence about what the application does.
+
+---
+
+## What's next
+
+Kata 7 introduces a second bounded context, Shipping, that reacts to
+Ordering's events without either side importing the other's
+internals. The repository pattern from this chapter carries straight
+through: `ShipmentRepo` is the same record-of-functions on the same
+actor scaffold, with the message type adapted to shipping's queries.
+

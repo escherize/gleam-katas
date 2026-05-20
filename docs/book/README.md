@@ -18,6 +18,10 @@ One DDD concept per chapter, paired with the Gleam patterns the compiler will en
 - [11: Kata 10: Wiring and Configuration](11_kata_wiring.md): swap the SQLite adapter into the composition root. A `RepoBackend` sum type plus a factory function route env config through a unified error type, so startup fails fast on bad config.
 - [12: Putting It Into Practice](12_in_practice.md): the bootstrap path, refactor moves as the system grows, signs of over-application, the testing pyramid, composition root in production, talking to non-DDD colleagues, and what comes after the foundation.
 
+### Appendix
+
+- [`docs/use.md`](../use.md): deeper treatment of the `use <-` desugaring, the four shapes it takes, and how to read chained `result.try` calls. Several chapters point here.
+
 ## Prerequisites
 
 - A working Gleam toolchain (`gleam` on your `PATH`).
@@ -34,12 +38,12 @@ The reference solutions live in `src/`; the tests in `test/` are their spec.
 
 ## A note on style
 
-Each chapter follows the same shape:
+Each chapter follows roughly this shape:
 
 1. **Concept**: the DDD idea in plain language.
-2. **New Gleam fundamentals**: what this kata needs that earlier ones didn't cover.
+2. **New Gleam fundamentals**: what this kata needs that earlier ones didn't cover. (Omitted when a chapter introduces no new language features, since chapter 02 leans entirely on the fundamentals from chapter 01.)
 3. **The task**: function signatures and rules.
 4. **Hints**: enough to unblock without spoiling the design.
-5. **Solution**: the reference, walked through.
+5. **Walk-through**: the reference solution, with reasoning.
 6. **Critique**: what holds up, what shifts as the system grows.
-7. **DDD takeaway**: the property the code now *guarantees*, and why it matters past the toy example.
+7. **Takeaway**: the property the code now *guarantees*, and why it matters past the toy example.

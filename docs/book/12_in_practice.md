@@ -80,24 +80,6 @@ aren't two contexts. If `customer_billing.gleam` and
 `customer_marketing.gleam` show up in the same PR every time, merge
 them and stop pretending.
 
-### A note on the missing customer endpoints
-
-The kata's HTTP boundary accepts `customer_id` as a string and never
-checks whether the customer exists. There are no `POST /customers` or
-`GET /customers/:id` endpoints, even though `src/customer.gleam`
-defines the type, because we cut them to keep the kata short.
-
-If you want to add them, you have to decide how Ordering should treat
-the cross-context reference:
-
-- (a) Pre-validation: call `CustomerRepo.find` before accepting an order; reject unknown ids.
-- (b) Async subscription: Customer publishes `CustomerCreated`; Ordering keeps a local index.
-- (c) Trust by default: accept any id, reconcile via a periodic job if needed.
-
-Pick one deliberately when it matters. The kata implements (c) by
-omission, which is fine for a learning project but worth being honest
-about for anything that ships.
-
 ---
 
 ## Refactor moves as the system grows
@@ -172,7 +154,7 @@ underrated tool in this toolkit.
 The pyramid the katas built:
 
 ```
-              ╱─────────╲       few, slow:
+              ╱────────╲       few, slow:
              ╱  end-to- ╲       wisp/simulate -> handler -> use case
             ╱    end     ╲      -> repo -> assert response
            ╱──────────────╲
@@ -180,9 +162,9 @@ The pyramid the katas built:
          ╱  with in-memory  ╲   place_order.run against in_memory()
         ╱     adapters       ╲  repo. No HTTP. No real DB.
        ╱──────────────────────╲
-      ╱   pure domain function  ╲  many, fast:
-     ╱        unit tests          ╲  order.add_line(...) with various
-    ╱──────────────────────────────╲ inputs. No IO. Milliseconds.
+      ╱  pure domain function  ╲  many, fast:
+     ╱      unit tests          ╲  order.add_line(...) with various
+    ╱────────────────────────────╲ inputs. No IO. Milliseconds.
 ```
 
 The pyramid only inverts when there's nothing pure to test. The
@@ -236,27 +218,16 @@ pub fn main() {
 }
 ```
 
-Worth internalizing about this shape:
-
-- All configuration enters at the top. `config.from_env()` is the one
-  place that reads env vars, and everything else takes typed config
-  values. Scattering `env.get("DATABASE_URL")` calls through the
-  codebase always rots.
-- Resources have known lifetimes. The DB connection lives for the
-  process lifetime; tests open their own. A "lazy connection pool
-  that auto-initializes on first use" reliably produces the "works
-  locally, breaks in production" class of bug.
-- Failure to initialize crashes the boot. `let assert Ok(...)` on each
-  adapter means that if the DB can't open, the process exits now,
-  before the first request, not three minutes later when a user
-  notices.
-- Supervision, when you need it, wraps everything. For long-running
-  apps with multiple actors (event bus, scheduler, background jobs),
-  the composition root builds a supervisor and starts it. Plain HTTP
-  servers don't need this; Mist supervises itself.
-- The composition root is the only file with `let assert Ok(...)` on
-  adapter construction. Below it, everything takes already-constructed
-  values, and nothing lazily initializes anything.
+Configuration enters once, at the top. Scattering `env.get(...)` calls
+through the codebase always rots. Resources have known lifetimes: the
+DB connection lives for the process, tests open their own, and "lazy
+pool that initializes on first use" reliably ships the "works locally,
+breaks in production" class of bug. Failure to initialize crashes the
+boot, so a missing DB exits the process before the first request
+instead of three minutes later when a user notices. Supervision wraps
+everything when you need it; plain HTTP servers don't, since Mist
+supervises itself. Below the composition root, nothing else has
+`let assert Ok(...)` on adapter construction.
 
 ---
 
@@ -357,6 +328,38 @@ that makes those books readable.
 
 ---
 
+## What the kata omits, and what you'd add to ship it
+
+Two load-bearing pieces sit just outside the kata's scope, and
+they're the first things any extension runs into.
+
+### Customer endpoints
+
+The HTTP boundary accepts `customer_id` as a string and never checks
+whether the customer exists. There are no `POST /customers` or
+`GET /customers/:id` endpoints, even though `src/customer.gleam`
+defines the type. If you add them, you have to decide how Ordering
+should treat the cross-context reference:
+
+- (a) Pre-validation: call `CustomerRepo.find` before accepting an order; reject unknown ids.
+- (b) Async subscription: Customer publishes `CustomerCreated`; Ordering keeps a local index.
+- (c) Trust by default: accept any id, reconcile via a periodic job if needed.
+
+Pick one deliberately when it matters. The kata implements (c) by
+omission, which is fine for a learning project but worth being honest
+about for anything that ships.
+
+### JSON request bodies
+
+The HTTP boundary kata uses path parameters only. Real APIs take JSON
+bodies, which means a decoder per endpoint that translates
+`Result(InputStruct, json.DecodeError)` into either a 422 with details
+or a use-case call. The shape doesn't change (it's another translation
+layer in the shell), but it's its own skill, covered in Wisp + `gleam_json`
+cookbook material.
+
+---
+
 ## A few patterns the book skipped on purpose
 
 Worth flagging because you'll run into them in other books and wonder
@@ -399,19 +402,13 @@ where they went:
 
 ## A short closing
 
-By this point you have the vocabulary, the patterns in idiomatic
-Gleam, and some judgment about when to use them and when to wait.
-You've also seen the Gleam-specific moves that keep each pattern
-small: records of functions in place of interface hierarchies, smart
-constructors in place of Factory classes, closures in place of DI
-containers, modules in place of multi-package layouts.
+The vocabulary, the patterns in idiomatic Gleam, and some judgment
+about when to wait are now in hand, along with the moves that keep
+each pattern small: records of functions in place of interface
+hierarchies, smart constructors in place of Factory classes, closures
+in place of DI containers, modules in place of multi-package layouts.
 
-What a book can't give you is the muscle memory. That comes from
-doing it on a working project: hitting friction, choosing to introduce
-or remove a pattern, watching the result, and updating your mental
-model from what happened.
-
-Build something small with these tools and ship it. Most of what the
-project needs was already in the first four chapters, and the rest of
-the toolkit sits in the back of the mind, available when a problem
-justifies pulling it out.
+Muscle memory is what a book can't give. Build something small with
+these tools and ship it. Most of what the project needs was already
+in the first four chapters; the rest sits in the back of the mind,
+available when a problem justifies pulling it out.

@@ -63,7 +63,7 @@ failure mode the core cares about.
 
 ### Wisp: the HTTP framework
 
-Wisp is the standard Gleam web framework. The surface area you'll touch:
+Wisp is the standard Gleam web framework. The shape you'll lean on:
 
 ```gleam
 import wisp.{type Request, type Response}
@@ -76,22 +76,18 @@ case wisp.path_segments(req), req.method {
   ["orders", id, "place"], http.Post -> ...
   _, _ -> wisp.not_found()
 }
-
-// Response constructors:
-wisp.ok()                         // 200
-wisp.no_content()                 // 204
-wisp.bad_request(detail)          // 400
-wisp.not_found()                  // 404
-wisp.method_not_allowed(allowed)  // 405
-wisp.unprocessable_content()      // 422
-wisp.internal_server_error()      // 500
-wisp.json_response(json, status)  // any status with JSON body
-wisp.response(status)             // any status, no body
-wisp.string_body(response, str)   // attach a string body
 ```
 
-For `409 Conflict`, use `wisp.response(409)`, since Wisp doesn't ship a
-named constructor for every code.
+Response constructors come in two flavours: named helpers for the
+common codes (`wisp.ok()`, `wisp.not_found()`, `wisp.bad_request(...)`,
+`wisp.unprocessable_content()`, `wisp.internal_server_error()`) and
+`wisp.response(status)` for any code that doesn't have one
+(`wisp.response(409)` for Conflict, for example). JSON bodies go
+through `wisp.json_response(json, status)`.
+
+The exact set of named helpers drifts between Wisp versions, so the
+[Wisp docs](https://hexdocs.pm/wisp/) are the source of truth; this
+chapter pins down only the ones the kata uses.
 
 ### Mist: the underlying HTTP server
 
@@ -309,46 +305,33 @@ and thin in the middle, translating what it can and deciding nothing.
 
 ## Critique
 
-This kata's POST has no JSON request body, since it puts all its
-inputs in the URL path. Real APIs send JSON bodies, and parsing them
-adds another translation layer, since `gleam_json` decoders give you
-`Result(SomeStruct, JsonError)`, which becomes either a 422 with
-details or a call into the use case. JSON decoding is separate skill
-territory, Wisp + `gleam_json` cookbook material, so I deferred it
-to keep the focus on the FCIS shape.
+The POST puts all inputs in the URL path, so there's no JSON request
+body. Real APIs do take them, and a decoder per endpoint translates
+`Result(InputStruct, JsonError)` into either a 422 with details or a
+use-case call. The shape doesn't change; it's another translation
+layer in the shell. Wisp + `gleam_json` cookbook material covers it.
 
-Auth is absent. Wisp ships middleware for sessions, CSRF, and the
-rest (`wisp.handle_head`, `wisp.csrf_known_header`, and friends), and
-real apps stack them. The kata skips them because the lesson is the
-boundary translation.
+Auth, content negotiation, and observability are all absent. Wisp
+ships middleware for sessions and CSRF; OpenTelemetry packages exist
+for real instrumentation; an `Accept` header check dispatches to a
+different formatter. Each one stacks on top of the boundary without
+moving it, so the kata leaves them out.
 
-The handler does no content negotiation; it always returns JSON. Real
-APIs check the `Accept` header and switch between JSON, HTML, or text.
-Adding it on top of the basics costs little: match on the header,
-dispatch to a different formatter.
+`Deps` holds one field, which would normally be a smell. The bag
+stays because the moment a real app adds a `clock`, an `event_bus`,
+or a `customer_repo`, it absorbs them without rippling through every
+signature.
 
-`Deps` holds one field. The dependency-bag pattern earns its
-complexity once several deps travel together; with one, passing the
-repo directly would be fine. The bag stays because in a real app
-you'll soon add a `clock`, an `event_bus`, a `customer_repo`, and the
-bag absorbs those without rippling through every signature.
-
-Real persistence is missing. The composition root builds an
-in-memory repo, so a server restart drops every order. A Postgres
-adapter satisfying the same `OrderRepo` interface would swap
-`order_repo.in_memory()` for `order_repo.postgres(pool)` and nothing
-above the adapter would change. That substitution is the payoff Kata 6
-promised; here is where you feel it.
-
-Observability is absent. Logs, metrics, and traces all go missing.
-Wisp's `wisp.handle_head` middleware can log, and OpenTelemetry
-packages exist for real instrumentation, but the kata leaves both out.
+Persistence is in-memory, so restarts drop every order. Kata 9 swaps
+in SQLite behind the same `OrderRepo` interface; nothing above the
+adapter moves. That substitution is the payoff kata 6 promised, and
+the chapter on it is where the promise lands in working code.
 
 ---
 
-## DDD takeaway
+## Takeaway
 
-The full vertical slice runs end to end:
+The vertical slice runs end to end:
 
 ```
 HTTP Request
@@ -368,44 +351,8 @@ src/order.gleam             ← pure aggregate
 ```
 
 Each layer is independently testable and carries its own type
-vocabulary. The dependency arrows all point inward, boundary to use
-case to domain, and the composition root builds the concrete adapters
-and hands them in.
-
-Hexagonal architecture in working code amounts to a handful of files
-and a record of values, in place of six packages and an
-annotation-driven container.
-
-Combined with kata 7 (bounded contexts), kata 6 (repositories), kata 5
-(events), and the foundational katas, you can write a backend service
-that:
-
-- Has a typed domain model with enforced invariants
-- Persists state through a swappable adapter
-- Communicates between contexts via events
-- Translates HTTP at the edge with no business logic in the handler
-- Supports end-to-end tests without a running database or server
-
-The architectural toolkit is complete. Everything beyond is
-specialization: sagas for multi-context workflows, event sourcing for
-audit-heavy domains, CQRS for read/write asymmetry. None of it changes
-the shape of what you've already built; each one extends it in a
-particular direction.
-
----
-
-## Where this leaves the book
-
-You've done the foundation kata progression and the integration
-capstone:
-
-| Kata | Adds |
-|---|---|
-| 1–4 | Domain modeling: types as proof |
-| 5 | Events as facts |
-| 6 | Repositories: domain-storage decoupling |
-| 7 | Bounded contexts: model independence |
-| 8 | HTTP boundary + composition root: the shell |
-
-The book supplies the vocabulary; muscle memory sticks only once a
-real project carries it.
+vocabulary. The dependency arrows all point inward, and the
+composition root is the one file that constructs concrete adapters and
+hands them down. Hexagonal architecture in working code amounts to a
+handful of files and a record of values, in place of six packages and
+an annotation-driven container.

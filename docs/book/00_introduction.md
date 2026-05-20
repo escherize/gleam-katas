@@ -33,8 +33,9 @@ but they sit downstream of the ideas above.
 
 ## Why Gleam
 
-Gleam is a compact language with the feel of a careful editor's pass, and
-it ships without escape hatches.
+Gleam is a compact language with the feel of a careful editor's pass. It
+ships with very few escape hatches. `let assert`, `panic`, and FFI exist,
+but each one is a deliberate keystroke rather than an idiomatic shortcut.
 
 - [Algebraic data types](https://tour.gleam.run/data-types/custom-types/) with exhaustive [pattern matching](https://tour.gleam.run/flow-control/case-expressions/). You name every alternative, and the compiler refuses to let you forget one.
 - [Opaque types](https://tour.gleam.run/advanced-features/opaque-types/), a one-keyword feature that lets a module hide its constructor. Outside the module, the type exists, but the only way to build one is through functions you expose.
@@ -59,14 +60,21 @@ stop being conventions and start being what the compiler checks.
 
 ## Why this kata progression
 
-1. *Value Objects* (`Email`, `Money`). The base unit, where you build reps with opaque types, smart constructors, error sums, and `use` chaining.
-2. *Entities* (`Customer`). The same toolkit, but identity now matters; ID types, equality semantics, and state transitions modeled as new immutable values.
-3. *Aggregates* (`Order` plus `OrderLine`). Several internal pieces with invariants spanning them, so the work shifts to hiding internals behind one front door.
-4. *Domain Events* (`OrderPlaced`, and friends). State transitions that *also* report what happened. (Coming in a later chapter.)
+The book climbs from one-file types up to a wired backend, each kata
+adding one DDD concept and only the Gleam features that concept needs.
 
-Each kata adds one DDD concept, and each chapter introduces only the Gleam
-features that concept needs. By the end you can read or write idiomatic
-domain code in Gleam without having taken either subject as a course first.
+1. *Value Objects* (`Email`, `Money`, katas 1–2). Opaque types, smart constructors, error sums, and `use` chaining.
+2. *Entities* (`Customer`, kata 3). The same toolkit, but identity matters; ID types, equality semantics, and state transitions modeled as new immutable values.
+3. *Aggregates* (`Order`, kata 4). Several internal pieces with invariants spanning them, so the work shifts to hiding internals behind one front door.
+4. *Domain Events* (`OrderPlaced` and friends, kata 5). State transitions that *also* report what happened.
+5. *Repositories* (kata 6). Records of functions as interfaces; OTP actors hidden behind them.
+6. *Bounded Contexts* (kata 7). Folders as boundaries; events as the integration contract.
+7. *Composition Root + HTTP Boundary* (kata 8). Wisp/Mist with a `Deps` record. The shell translates; the core decides.
+8. *SQLite Repository* (kata 9). Same interface, real persistence, snapshot/restore for opaque aggregates.
+9. *Wiring and Configuration* (kata 10). Env vars become typed config; a factory routes config to adapters.
+
+By the end you can read or write idiomatic Gleam domain code without
+having taken either subject as a course first.
 
 ---
 
@@ -80,7 +88,7 @@ Each chapter follows the same shape:
 - *Hints / what to do*: nudges to unblock without spoiling the design.
 - *A walk-through*: the reference solution, with reasoning.
 - *Critique*: where the solution holds up, where it could be tightened, and how it strains as the system grows around it.
-- *DDD takeaway*: what the code now *guarantees*, and why that matters past the toy example.
+- *Takeaway*: what the code now *guarantees*, and why that matters past the toy example.
 
 Type the code and satisfy the tests before you read the walk-through,
 because the exercises won't do their work otherwise.

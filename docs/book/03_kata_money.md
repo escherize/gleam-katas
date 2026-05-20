@@ -7,9 +7,9 @@ Same shape as `Email` (opaque type, smart constructor), under two new pressures.
 1. A `Money` has two attributes (amount and currency) that have to stay coherent.
 2. `add(usd, eur)` is nonsense the type system should refuse.
 
-Here DDD turns into encoding the rules of the domain into the
-types. The type carries the operations that respect its invariants
-alongside the data they operate on.
+The rules of the domain become rules of the type. The type carries
+the operations that respect its invariants alongside the data they
+operate on.
 
 ---
 
@@ -184,12 +184,12 @@ in the type signature where the caller has to deal with it.
 
 ## Critique
 
-- `same_currency` is `pub` because the next kata (`Order`) compares currencies between lines. Helpers the wider domain reaches for go public, and helpers private to one module's internal flow (like `require_same_currency`) stay private.
+- `same_currency` is `pub` as a forward lean: the next kata (`Order`) wants to compare line currencies without reaching for `==` on the currency field, and a named predicate reads better than `a.currency == b.currency` at the call site. Strictly speaking, keeping it private and inlining one comparison in `Order` would be the smaller diff. Pick whichever rule you prefer ("expose only what's used" vs "expose the named predicate when one exists") and stay consistent. The book picks the latter. The private helper (`require_same_currency`) stays private because it's a `use <-` callback shape, not a predicate.
 - The module ignores integer overflow, which is fine for toy domain code. For production money handling, use a bigint type or guard explicitly.
 
 ---
 
-## DDD takeaway
+## Takeaway
 
 The module has one way to produce a `Money`, and that path passes every
 invariant. No caller can lie about currency or smuggle in a negative

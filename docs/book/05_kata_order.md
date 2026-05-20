@@ -75,7 +75,7 @@ pub opaque type OrderId {
   OrderId(value: String)
 }
 
-// Internal — outside this module, this type does not exist.
+// Internal. Outside this module, this type does not exist.
 type OrderLine {
   OrderLine(sku: String, quantity: Int, unit_price: Money)
 }
@@ -185,8 +185,13 @@ money layer look identical to the caller. Two options:
 - (a) define richer `OrderError` variants (`OrderCurrencyMismatch`, `OrderOverflow`) and translate explicitly;
 - (b) wrap the underlying error as `TotalCalculationFailed(money.MoneyError)`.
 
-Most projects settle on (b), which preserves the cause without exploding
-the error vocabulary.
+**The book recommends (b).** It preserves the cause without exploding
+the error vocabulary, and it keeps the layering honest: `OrderError`
+doesn't have to know what failure modes `Money` will grow next month.
+Option (a) is the right choice only when the outer layer needs to
+*react* differently per cause (different HTTP status codes, different
+retry policies); when callers just want to log the cause, wrapping is
+cheaper and ages better.
 
 `OrderLine` is fully internal, with no `pub` and no `opaque`. The original spec
 said `pub opaque type OrderLine`, which also provides opacity. Private-only
@@ -199,7 +204,7 @@ That is a bug; the fix mirrors `customer.new_id`.
 
 ---
 
-## DDD takeaway
+## Takeaway
 
 The `Order` module is now a boundary. Outside it, `OrderLine` is not
 constructible, and no caller can put an order into an inconsistent state.

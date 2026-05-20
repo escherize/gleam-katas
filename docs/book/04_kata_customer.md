@@ -142,7 +142,7 @@ went through the constructor.
 
 ---
 
-## DDD takeaway
+## Takeaway
 
 You have a `Customer` whose attributes drift while its identity stays
 fixed and trusted. `rename` and `change_email` are state transitions. Each produces a new

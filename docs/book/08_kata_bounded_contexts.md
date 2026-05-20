@@ -12,8 +12,7 @@ Marketing segments customers by lifetime value and Finance
 reconciles payments. Each team owns its own data and vocabulary,
 and moves at its own pace.
 
-DDD turns each one into a separate bounded context with its own
-model. They share concepts (a customer in Ordering is the same
+Each becomes its own bounded context with its own model. They share concepts (a customer in Ordering is the same
 human as a customer in Marketing), but the *data* each context
 holds about that customer diverges. Force them into one type and
 the model dies fast:
@@ -302,67 +301,39 @@ can rename, add, or remove event variants and only
 `order_event_adapter.gleam` updates. That's an Anti-Corruption Layer
 in eight lines, and you should add it once you need it, not before.
 
-There's no real event bus here. The "bus" is the composition root
-iterating events and calling handlers. That's fine for a single
-process with synchronous handlers. It runs out of room when you want async
-delivery across services, persistent retry, or dead-letter queues,
-at which point you reach for a real broker (RabbitMQ, NATS, Kafka,
-BEAM distribution backed by persistent_term). The application code
-stays the same; the wiring changes.
+There's no real event bus. The "bus" is the composition root
+iterating events and calling handlers, which suits one process with
+synchronous handlers and runs out of room when async delivery,
+persistent retry, or dead-letter queues come up. The fix is a real
+broker (RabbitMQ, NATS, Kafka, BEAM distribution); application code
+doesn't move, only the wiring.
 
-`Shipment` doesn't emit events. Maybe it should, since a `ShipmentShipped`
-event would feed tracking notifications and Finance reconciliation.
-The kata skips it so the focus stays on the cross-context flow instead of
-redoing kata 5.
+`Shipment` doesn't emit events of its own. Adding `ShipmentShipped`
+would feed tracking and Finance reconciliation, but the kata skips it
+to keep the focus on cross-context flow instead of redoing kata 5.
 
-The kata also skips process managers and sagas. A full "ship and bill" flow might look
-like `OrderPlaced → CreateShipment → ChargeCard → ConfirmShipment`,
-and coordinating that across contexts is a saga's job, out of
-scope here. The pattern in this kata is one idempotent handler per
-event, with no orchestration on top.
+Process managers and sagas are also out of scope. Coordinating
+`OrderPlaced → CreateShipment → ChargeCard → ConfirmShipment` across
+contexts is a saga's job; the pattern here is one idempotent handler
+per event, with no orchestration on top.
 
 ---
 
-## DDD takeaway
+## Takeaway
 
-What you've built:
+Two bounded contexts now live in one process, communicating via
+events along an asymmetric dependency arrow the file tree makes
+visible. One file (the handler) names both contexts and is idempotent;
+a test exercises the cross-context flow with no mocks. Adding
+Marketing means `src/marketing/`; adding Finance means
+`src/finance/`. The shape repeats.
 
-- Two bounded contexts in one process, communicating via events
-- An asymmetric dependency arrow that the file tree makes visible
-- An idempotent integration handler, the only file where either context names the other
-- A test that exercises the full cross-context flow without mocks
-- A pattern that scales: add Marketing? `src/marketing/`. Add Finance? `src/finance/`. The shape repeats every time.
-
-What it teaches:
-
-- The boundary lives in the dependency graph, not in the documentation. Comments and team agreements drift; imports don't.
-- Events are the integration contract: named, versioned, with payloads nobody mutates after the fact. Changing an event signature is a public API change, while changing a domain type is a private refactor.
-- "Same word, different model" is the right answer. The shared concept is the ID; each context owns its own view of the data.
-- Distributed systems use the same model with a network in the middle. A Shipping *service* in another process or datacenter has the same code shape, just with a different transport and identical domain logic. That's why "monolith with bounded contexts" and "microservices with bounded contexts" swap more easily than the marketing language suggests.
-
----
-
-## Where this leaves the book
-
-What's now in your toolkit, in order of payoff:
-
-1. Types as the load-bearing structure of the domain (katas 1–4)
-2. Events as facts that escape the aggregate (kata 5)
-3. Repositories that hide storage from the domain (kata 6)
-4. Bounded contexts as the unit of model independence (kata 7)
-
-That covers the core of DDD: the strategic patterns (contexts,
-ubiquitous language, events) and the tactical ones (entities, value
-objects, aggregates, repositories) in idiomatic Gleam, with none of
-the ceremony.
-
-What's beyond the book:
-
-- Sagas and process managers: orchestrating workflows that span aggregates and contexts
-- Distributed event delivery: moving from in-process function calls to message brokers or BEAM distribution
-- Read models and CQRS: denormalized projections that the event stream feeds and queries hit
-- Event sourcing: making the event log the source of truth and deriving state by replay
-- Anti-corruption layers for real: when a context has to integrate with a foreign system whose model you can't change
-
-Each is its own book. The kata progression you've finished is the
-foundation that makes those books readable.
+The lessons compound. The boundary lives in the dependency graph
+rather than in documentation, since comments and team agreements
+drift while imports don't. Events are the integration contract,
+named and versioned, and changing one is a public API change while
+changing a domain type is a private refactor. "Same word, different
+model" is the right answer: contexts share IDs, not data. A Shipping
+service in another datacenter is the same code with a different
+transport, which is why monoliths and microservices with bounded
+contexts swap more easily than the marketing language suggests.

@@ -91,9 +91,24 @@ already did its job as validation and `trimmed` is the string you want.
 - `[""]` only happens when `trimmed` is `""`. Trimming first folds whitespace-only inputs into the `Empty` case for free.
 - A name like `MissingTextBeforeAt` reads better than `EmptyLocalPart` for the audience that sees these errors. Domain language is part of the design.
 
+### Out of scope on purpose
+
+This validator is a teaching exercise, not a production email parser.
+What it doesn't do, and what you'd add if it had to ship:
+
+- **RFC 5322 corner cases.** Quoted local parts, comments, escaped `@` characters, IP-literal domains, all rejected here and all legal in the RFC.
+- **Internationalized email (RFC 6531).** `user@bücher.de` and `测试@example.com` both fail the "ASCII-friendly" assumptions baked into the split. A real validator either pre-encodes to IDNA/punycode or accepts Unicode locals.
+- **Whitespace inside the address.** Trimming the outside isn't the same as rejecting `" @example.com"`, which currently passes both halves of the `[_, _]` check with a leading space.
+- **Deliverability.** Even a syntactically perfect address may not exist. That's an MX-lookup / send-and-confirm problem, not a parser problem.
+
+The point of the kata is that *whatever* rules you settle on, the
+opaque-type-plus-smart-constructor shape makes them enforceable in one
+place. Swap in a stricter parser tomorrow and the rest of the codebase
+doesn't move.
+
 ---
 
-## DDD takeaway
+## Takeaway
 
 Anywhere in your codebase with a parameter `email: Email`, the compiler
 guarantees `new` already validated it. You validate once at the

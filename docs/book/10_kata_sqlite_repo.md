@@ -73,13 +73,13 @@ import sqlight
 // Open
 let assert Ok(conn) = sqlight.open(":memory:")  // or "file:orders.db"
 
-// DDL — no params, no result
+// DDL: no params, no result
 let assert Ok(Nil) = sqlight.exec(
   "CREATE TABLE orders (id TEXT PRIMARY KEY, data TEXT NOT NULL)",
   on: conn,
 )
 
-// Parameterized query — INSERT/UPDATE/DELETE
+// Parameterized query: INSERT/UPDATE/DELETE
 let assert Ok(_) = sqlight.query(
   "INSERT INTO orders (id, data) VALUES (?, ?)",
   on: conn,
@@ -131,54 +131,28 @@ The decoder type is `decode.Decoder(t)`, built by chaining
 `decode.field` calls inside a `use` block. The hints below walk
 through what an `Order`-shaped decoder looks like.
 
-#### Tip: the LSP writes the boilerplate
+#### The LSP writes the boilerplate
 
-Recent versions of the Gleam language server expose "Generate to-json
-function" and "Generate decoder" as code actions. Put your cursor on
-the `pub type Foo { ... }` line, trigger code actions in your editor
-(`⌘.` / `Ctrl+.` in VS Code, `<space>a` in Helix, `<leader>ca` in most
-nvim setups), and pick the generator. The LSP writes
-`pub fn foo_to_json` or `pub fn foo_decoder` next to the type,
-populated from the field names and types it can see.
+The Gleam language server ships "Generate to-json function" and
+"Generate decoder" as code actions. With the cursor on a
+`pub type Foo { ... }` line, trigger code actions in your editor
+(`⌘.` in VS Code, `<space>a` in Helix, `<leader>ca` in most nvim
+setups) and pick the generator. The LSP writes the encoder or decoder
+next to the type, populated from the fields it can see, and emits
+`todo` placeholders for nested types it hasn't reached yet. Covering
+the full Order tree takes several invocations and a styling pass.
 
-The action only works on the type definition in the file that owns
-it; outside that module, types are opaque and the LSP can't reach the
-fields. It generates an encoder or decoder for the
-immediate type only. Nested types like `Money`, `Currency`, and
-`OrderLine` need their own generated functions, and the generator
-emits `todo` placeholders for types whose encoder doesn't yet exist.
-Covering the whole Order tree takes several invocations of the
-action. The generated code is starting-point quality, so it needs
-restyling to match local conventions before committing.
+#### Visible code is the feature, not the cost
 
-#### And: visible code is the feature, not the cost
-
-Other ecosystems use derive macros (`#[derive(Serialize)]`),
-annotations (`@JsonProperty`), or typeclass instances (`instance
-ToJSON`). Each one hides the encoder, generating it at compile time
-or via reflection, so you can't see it without expanding macros or
-stepping through reflection metadata.
-
-Gleam's choice is to have you write the function, or have the LSP
-generate it into your source. The cost is a one-time scroll past
-roughly ten lines per type, and the return shows up across several
-properties.
-
-- The encoder is code you can read, grep, and step through. When
-  `to_json` produces wrong output, the bug sits in plain text in your
-  file rather than buried in macro expansion.
-- Field renames and additions surface as compile errors in the
-  encoder rather than silent serialization drift.
-- Different types can use different encoding strategies (snake_case
-  vs camelCase, omit-empty vs always-include) without decorator
-  soup. They're separate functions.
-- The encoder works the same whether the bytes go to JSON,
-  MessagePack, log lines, or test fixtures. There's no
-  format-specific machinery to learn.
-
-The tax (more typing) is genuine, and so is the benefit. Most Gleam
-programmers end up preferring it once the LSP takes the keystroke
-pain out of the boilerplate.
+Other ecosystems hide encoders behind derive macros
+(`#[derive(Serialize)]`), annotations (`@JsonProperty`), or typeclass
+instances, all generated at compile time or via reflection. Gleam asks
+you to write the function (or have the LSP write it into your source).
+A few keystrokes more, paid back in: encoders you can read, grep, and
+step through; field renames that surface as compile errors instead of
+silent serialization drift; per-type encoding strategies without
+decorator soup; and one mechanism whether the bytes go to JSON,
+MessagePack, log lines, or fixtures.
 
 ### The snapshot/restore back door pattern
 
@@ -317,36 +291,16 @@ One row per order holds the serialized snapshot. Saving is
 `INSERT OR REPLACE`; finding is `SELECT data WHERE id = ?`. No joins
 or transactions yet.
 
-A `find` runs this path:
+`find` reads the row, decodes the JSON to an `OrderSnapshot`, and
+hands it to `order.restore`. `save` runs the inverse: `order.snapshot`,
+encode to JSON, `INSERT OR REPLACE`. The id comes from the `pub fn id`
+accessor added in kata 6.
 
-```
-SQL row (data: "{...}")
-  → JSON string
-  → decode to OrderSnapshot via gleam/json + decode.Decoder
-  → order.restore(snapshot) → Order
-  → wrap in Ok(...)
-```
+If decode fails, the row is corrupt. Add `CorruptRow(reason: String)`
+to `RepoError` so callers see something other than a generic decode
+error.
 
-If `decode` fails, the row is corrupt. The right answer is
-`Error(CorruptRow(reason))`, a variant of `RepoError` for when the
-database holds bytes that don't decode into the domain type. Add
-`CorruptRow(reason: String)` to `RepoError` if it isn't there yet.
-
-A `save` runs the inverse path:
-
-```
-Order
-  → order.snapshot(o) → OrderSnapshot
-  → encode to JSON object
-  → json.to_string → "{...}"
-  → INSERT OR REPLACE INTO orders (id, data) VALUES (?, ?)
-  → Ok(Nil)
-```
-
-The id comes from the order via the `pub fn id(order)` accessor you
-added in kata 6.
-
-The substitution at the composition root takes one line.
+The substitution at the composition root is one line:
 
 ```gleam
 // before
@@ -357,10 +311,8 @@ let assert Ok(conn) = sqlight.open("file:orders.db")
 let assert Ok(repo) = order_repo_sqlite.sqlite(conn)
 ```
 
-`place_order.run` and every call site downstream (the HTTP handler,
-the use-case tests) keep running unchanged. That swap is the design
-payoff of the repository pattern, and the payoff lands differently
-in the hands than on the page.
+`place_order.run`, the HTTP handler, and the use-case tests keep
+running unchanged. That swap is the repository pattern's whole point.
 
 ---
 
@@ -409,45 +361,32 @@ project picks one tradeoff and records the choice.
 
 ---
 
-## DDD takeaway
+## Takeaway
 
-The repository pattern shows its purpose at this point. Writing
-`OrderRepo` as a record of two functions in kata 6 made the
-architecture plausible because the in-memory implementation worked.
-Swapping in SQLite without touching the use case is what makes the
-architecture load-bearing. `place_order.run`, the HTTP handler, and
-the scenario tests run against either backend unchanged.
+Kata 6 made the repository pattern plausible because an in-memory
+adapter worked. This kata makes it load-bearing: SQLite slots in
+behind the same record of two functions, and the use case, handler,
+and scenario tests run against either backend unchanged. The domain
+code never learned what storage looks like because the type system
+gave it no way to find out, and systems built on that constraint
+survive a storage migration five years later.
 
-The deeper point is that the domain code never learned what storage
-looks like. The type system gave it no way to find out. Systems
-built on that constraint survive a storage migration five years
-later.
-
-The serialization boundary is its own design problem, visible only
-once a real adapter forces the question, and the snapshot/restore
-pair is the right Gleam pattern for it. Other
-languages reach for `@JsonSerializable` annotations or
-reflection-based ORMs. Gleam asks you to write the encoder by hand.
-When the schema drifts, the function to update is the one whose
-field list no longer matches the type.
+The snapshot/restore pair is the right Gleam answer to the
+serialization boundary. Other languages reach for `@JsonSerializable`
+annotations or reflection-based ORMs; Gleam asks you to write the
+encoder by hand, so when the schema drifts the function to update is
+the one whose field list no longer matches the type.
 
 ---
 
 ## What's next
 
-The stack now spans:
+The stack is now production-shape: typed domain, events as facts,
+repositories as interfaces, bounded contexts, HTTP boundary,
+composition root, and disk persistence. Everything beyond is
+specialization.
 
-- A typed domain (kata 1–4)
-- Events as facts (kata 5)
-- Repositories as interfaces (kata 6)
-- Bounded contexts (kata 7)
-- HTTP boundary and composition root (kata 8)
-- Persistence on disk (this kata)
-
-That stack is a production-shape Gleam backend, with the type system
-enforcing the architecture. Everything beyond is specialization.
-
-The last chapter in this book is practical advice for shipping with
-these patterns: what experience teaches that the katas don't, what
-to skip, when to escalate, and how to keep the codebase from
-drifting back into the soup the patterns exist to prevent.
+The final chapter steps out of katas and into practice: what
+experience teaches that the exercises don't, what to skip, when to
+escalate, and how to keep the codebase from drifting back into the
+soup the patterns exist to prevent.
