@@ -2,3 +2,6 @@
 *.ez
 /build
 erl_crash.dump
+orders.db
+orders.db*
+/sqlite
