@@ -195,25 +195,35 @@ Don't commit the database. The glob also covers SQLite's sidecar files.
 
 ### 7. Verify persistence
 
-Once it's hooked up, test by hand:
+The Hurl scripts from chapter 09 (`dev/hurl/`) do the round-trip
+without any per-step `kill`/`restart` choreography:
 
 ```sh
-# Start with SQLite, create an order
+# 1. start with SQLite, create + read one order
 ORDER_REPO=sqlite gleam run &
-curl -X POST "http://localhost:8080/orders?order_id=ORDER-001&customer_id=CUST-1"
-curl http://localhost:8080/orders/ORDER-001  # confirm it's there
+hurl --test --variables-file dev/hurl/vars.env dev/hurl/create.hurl
+hurl --test --variables-file dev/hurl/vars.env dev/hurl/get.hurl
 kill %1
 
-# Restart and check the order survived
+# 2. restart, prove the order survived
 ORDER_REPO=sqlite gleam run &
-curl http://localhost:8080/orders/ORDER-001  # still there
+hurl --test --variables-file dev/hurl/vars.env dev/hurl/get.hurl
 kill %1
 ```
 
-If the second `curl` returns the order, the wiring is done. A 404 means
+If the second `get.hurl` passes, the wiring is done. A 404 means
 something in the save path isn't writing to disk.
 
-Inspect the SQLite db file directly to confirm:
+Without Hurl, the same shape with curl:
+
+```sh
+ORDER_REPO=sqlite gleam run &
+curl -X POST "http://localhost:8080/orders?order_id=ORDER-001&customer_id=CUST-1"
+curl http://localhost:8080/orders/ORDER-001
+kill %1
+```
+
+Inspect the SQLite file directly to confirm bytes landed:
 
 ```sh
 sqlite3 orders.db 'SELECT id, length(data) FROM orders;'

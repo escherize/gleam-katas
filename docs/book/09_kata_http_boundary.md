@@ -303,6 +303,71 @@ and thin in the middle, translating what it can and deciding nothing.
 
 ---
 
+## Kicking the tires with Hurl
+
+`wisp/simulate` tests the handler in-process, which is fast and
+hermetic but doesn't actually start the server. Once `gleam run` is
+listening on `:8080`, the cleanest way to exercise it from outside is
+[Hurl](https://hurl.dev), a text-file HTTP runner that reads like raw
+requests with assertions stapled on.
+
+Install it once:
+
+```sh
+brew install hurl       # macOS
+# or: cargo install hurl
+```
+
+The repo ships a small set of `.hurl` files under `dev/hurl/`, one
+per endpoint plus a `flow.hurl` that chains create, add lines, place,
+read, and re-place (asserting 409 on the second placement). Variables
+live in `dev/hurl/vars.env`.
+
+Start the server in one terminal:
+
+```sh
+gleam run
+```
+
+In another, fire a single request with full output:
+
+```sh
+hurl --include --variables-file dev/hurl/vars.env dev/hurl/create.hurl
+```
+
+Or run the full scenario in `--test` mode (suppresses request/response
+bodies, prints pass/fail per file):
+
+```sh
+hurl --test \
+     --variables-file dev/hurl/vars.env \
+     --variable order_id=ORDER-$(date +%s) \
+     dev/hurl/flow.hurl
+```
+
+A fresh `order_id` per run avoids the second invocation tripping
+on the placed-state guard from the previous run; restarting the
+in-memory server has the same effect.
+
+`dev/hurl/errors.hurl` walks the 400 / 404 / 422 / 409 branches. When
+a use-case error variant moves or the handler's `case` arm drifts,
+one of those assertions starts failing before any reader runs into
+the bug.
+
+Two further scripts in the same directory go beyond smoke testing:
+
+- `workout.hurl` is a full state-machine traversal across four
+  customers (happy path, currency mismatch, empty place, modify
+  after place), with rich `jsonpath` assertions on order status,
+  line count, and SKU membership.
+- `pool-party.sh` fires N copies of `flow.hurl` in parallel via
+  `xargs -P`, each with a unique `order_id`. Every flow runs six
+  sequential requests; if the OTP actor ever interleaves them across
+  order ids, the 409-on-re-place assertion catches it. 200 flows /
+  32 in flight clears in about a second on a laptop.
+
+---
+
 ## Critique
 
 The POST puts all inputs in the URL path, so there's no JSON request
