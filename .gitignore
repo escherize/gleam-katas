@@ -5,3 +5,8 @@ erl_crash.dump
 orders.db
 orders.db*
 /sqlite
+
+# Quarto book outputs
+docs/book/_book/
+docs/book/.quarto/
+docs/book/_freeze/

@@ -1,0 +1,61 @@
+project:
+  type: book
+  output-dir: _book
+
+book:
+  title: "DDD in Gleam"
+  subtitle: "A textbook in ten katas"
+  author: "Bryan Maass"
+  date: today
+  search: true
+  repo-url: https://github.com/escherize/gleam-katas
+  repo-branch: solutions
+  repo-actions: [edit, source]
+
+  # The chapter files already carry "01.", "02.", ... in their titles,
+  # so let Quarto skip its own numbering rather than producing
+  # "Chapter 2 — 01. Gleam fundamentals" double labels.
+  number-sections: false
+
+  chapters:
+    - index.md
+    - 00_introduction.md
+    - 01_fundamentals.md
+    - 02_kata_email.md
+    - 03_kata_money.md
+    - 04_kata_customer.md
+    - 05_kata_order.md
+    - 06_kata_events.md
+    - 07_kata_repositories.md
+    - 08_kata_bounded_contexts.md
+    - 09_kata_http_boundary.md
+    - 10_kata_sqlite_repo.md
+    - 11_kata_wiring.md
+    - 12_in_practice.md
+
+  appendices:
+    - ../use.md
+
+format:
+  html:
+    theme: cosmo
+    code-link: true
+    code-copy: true
+    toc-depth: 3
+  pdf:
+    documentclass: scrbook
+    geometry:
+      - top=28mm
+      - left=25mm
+      - right=25mm
+      - bottom=28mm
+      - heightrounded
+    fontsize: 11pt
+    linestretch: 1.15
+    colorlinks: true
+    code-block-bg: "#f5f5f5"
+    code-block-border-left: "#999"
+    code-overflow: wrap
+    highlight-style: github
+  epub:
+    cover-image: ""
