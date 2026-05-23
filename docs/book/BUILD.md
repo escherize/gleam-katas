@@ -37,6 +37,15 @@ the static site is `_book/index.html` and friends.
 - `_quarto.yml` — project config (chapter order, output formats, theme).
 - `index.md` — book cover/intro page. The first chapter shown.
 - `00_introduction.md` ... `12_in_practice.md` — chapters, in order.
+- `cover.svg` / `cover.png` — book cover; the SVG is canonical, the PNG is rasterized for embedding.
+
+### Regenerating the cover
+
+```sh
+rsvg-convert -w 1200 cover.svg -o cover.png
+```
+
+`rsvg-convert` ships with `librsvg` (`brew install librsvg`).
 
 Adding a chapter is a two-step change: drop the markdown file in this
 directory, then add it to the `chapters:` list in `_quarto.yml`.

@@ -60,7 +60,7 @@ rewraps an inner error to fit the outer error type when the two don't line
 up.
 
 The minimal Kata 3 won't force you onto this, but you'll reach for it the
-moment you start composing types. See `docs/use.md` for the deeper treatment.
+moment you start composing types. See `use.md` for the deeper treatment.
 
 ---
 
@@ -111,7 +111,7 @@ so cases land as the implementation lands.
 3. `rename` does return `Result`, because `new_name: String` is raw input that can still be empty. Route it through `new` so the empty-name check lives in one place.
 4. For `same_customer`, plain `==` on `CustomerId` is the right tool. `CustomerId` is opaque and only constructable through `new_id`, so every `CustomerId` in your program already cleared the constructor, and opacity buys you trustworthy equality.
 5. Skip the extra fields (`created_at`, `version`, address, whatever else is tempting). The kata wants the entity-vs-value distinction; everything else is noise.
-6. The strict `new` takes values that already carry their proofs, so don't let raw strings through. Raw input belongs in a separate boundary factory that pipelines the three smart constructors together; see `docs/use.md`. Splitting the two keeps each function honest about what it can fail on.
+6. The strict `new` takes values that already carry their proofs, so don't let raw strings through. Raw input belongs in a separate boundary factory that pipelines the three smart constructors together; see `use.md`. Splitting the two keeps each function honest about what it can fail on.
 
 ---
 
@@ -138,7 +138,7 @@ went through the constructor.
 
 - `string.length(raw) == 0` works, but `string.is_empty(raw)` is cheaper (no traversal) and reads as the intent. `new_id` above uses `is_empty` while `new` still uses `length`; pick one.
 - `new(... name: "   ")` succeeds as written, because whitespace-only names pass the check. Whether that counts as a bug depends on the domain, and every spot a string enters your domain is a place for invariants to leak.
-- The strict `new` is good design that grates when you genuinely have raw input from an HTTP handler. Add a separate `from_raw` boundary factory that chains the three smart constructors in a `use`-chain; `docs/use.md` §4 has the worked example.
+- The strict `new` is good design that grates when you genuinely have raw input from an HTTP handler. Add a separate `from_raw` boundary factory that chains the three smart constructors in a `use`-chain; `use.md` §4 has the worked example.
 
 ---
 

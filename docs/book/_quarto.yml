@@ -7,15 +7,12 @@ book:
   subtitle: "A textbook in ten katas"
   author: "Bryan Maass"
   date: today
+  cover-image: cover.png
   search: true
   repo-url: https://github.com/escherize/gleam-katas
   repo-branch: solutions
+  repo-subdir: docs/book
   repo-actions: [edit, source]
-
-  # The chapter files already carry "01.", "02.", ... in their titles,
-  # so let Quarto skip its own numbering rather than producing
-  # "Chapter 2 — 01. Gleam fundamentals" double labels.
-  number-sections: false
 
   chapters:
     - index.md
@@ -34,7 +31,12 @@ book:
     - 12_in_practice.md
 
   appendices:
-    - ../use.md
+    - use.md
+
+# Chapter titles already carry "01.", "02.", ... so disable Quarto's
+# own numbering rather than producing "Chapter 2 — 01. Gleam fundamentals"
+# double labels.
+number-sections: false
 
 format:
   html:
@@ -44,6 +46,15 @@ format:
     toc-depth: 3
   pdf:
     documentclass: scrbook
+    include-before-body:
+      text: |
+        \begin{titlepage}
+          \centering
+          \vspace*{\fill}
+          \includegraphics[width=\textwidth]{cover.png}
+          \vspace*{\fill}
+        \end{titlepage}
+        \cleardoublepage
     geometry:
       - top=28mm
       - left=25mm
@@ -54,8 +65,8 @@ format:
     linestretch: 1.15
     colorlinks: true
     code-block-bg: "#f5f5f5"
-    code-block-border-left: "#999"
+    code-block-border-left: "#999999"
     code-overflow: wrap
     highlight-style: github
-  epub:
-    cover-image: ""
+  # Add epub later when a cover image exists (epub renders blow up
+  # on an empty cover-image: "" path).

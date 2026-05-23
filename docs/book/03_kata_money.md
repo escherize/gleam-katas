@@ -77,7 +77,7 @@ A few mechanical facts:
 - The lowercase `t` in `Result(t, MoneyError)` is a *generic* type variable. The helper works whether the calling body returns `Result(Money, ...)` or `Result(Order, ...)`.
 
 Aggregates built on this pattern read top-to-bottom like a list of
-business rules. For a deeper explainer, see [`docs/use.md`](../use.md).
+business rules. For a deeper explainer, see [`use.md`](use.md).
 
 ---
 

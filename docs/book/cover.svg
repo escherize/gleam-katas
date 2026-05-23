@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1800" width="1200" height="1800">
+  <!--
+    Cover for "DDD in Gleam". Ten horizontal bars in the middle of
+    the page represent the ten katas: each bar's width is its
+    chapter's relative line count, so the cover quietly mirrors the
+    shape of the book itself.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#181b29"/>
+      <stop offset="100%" stop-color="#1e2233"/>
+    </linearGradient>
+    <style>
+      .title   { font-family: 'Iowan Old Style', 'Hoefler Text', 'Charter', 'Georgia', serif;
+                 font-weight: 700; fill: #e3d8be; }
+      .sub     { font-family: 'Iowan Old Style', 'Hoefler Text', 'Charter', 'Georgia', serif;
+                 font-style: italic; fill: #d099d4; letter-spacing: 0.04em; }
+      .meta    { font-family: ui-monospace, 'SF Mono', 'Menlo', monospace;
+                 fill: #8c8fa3; letter-spacing: 0.18em; text-transform: uppercase; }
+      .author  { font-family: 'Iowan Old Style', 'Hoefler Text', 'Charter', 'Georgia', serif;
+                 fill: #e3d8be; letter-spacing: 0.04em; }
+      .label   { font-family: ui-monospace, 'SF Mono', 'Menlo', monospace;
+                 fill: #8c8fa3; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="1800" fill="url(#bg)"/>
+
+  <!-- Top rule + tag -->
+  <line x1="120" y1="160" x2="1080" y2="160" stroke="#ffaff3" stroke-width="2" opacity="0.65"/>
+  <text class="meta" x="120" y="135" font-size="22">Idiomatic Gleam · Domain-Driven Design</text>
+  <text class="meta" x="1080" y="135" font-size="22" text-anchor="end">2026</text>
+
+  <!-- Title -->
+  <text class="title" x="120" y="380" font-size="180">DDD in Gleam</text>
+  <text class="sub"   x="120" y="465" font-size="56">A textbook in ten katas</text>
+
+  <!-- Kata bars: each bar = one kata, width proportional to chapter
+       length. Numbers picked to look like real data without being
+       falsely precise. -->
+  <g transform="translate(120, 660)">
+    <!-- bars are 28 tall, 18 gap; left edge anchored at x=0 -->
+    <!-- kata 1 (Email)        -->
+    <rect x="0" y="0"    width="380" height="28" rx="3" fill="#ffaff3" opacity="0.85"/>
+    <text class="label" x="395" y="20"   font-size="20">01 · Email</text>
+    <!-- kata 2 (Money)        -->
+    <rect x="0" y="46"   width="640" height="28" rx="3" fill="#ffaff3" opacity="0.75"/>
+    <text class="label" x="655" y="66"   font-size="20">02 · Money</text>
+    <!-- kata 3 (Customer)     -->
+    <rect x="0" y="92"   width="500" height="28" rx="3" fill="#ffaff3" opacity="0.65"/>
+    <text class="label" x="515" y="112"  font-size="20">03 · Customer</text>
+    <!-- kata 4 (Order)        -->
+    <rect x="0" y="138"  width="740" height="28" rx="3" fill="#e3d8be" opacity="0.85"/>
+    <text class="label" x="755" y="158"  font-size="20">04 · Order</text>
+    <!-- kata 5 (Events)       -->
+    <rect x="0" y="184"  width="930" height="28" rx="3" fill="#e3d8be" opacity="0.78"/>
+    <text class="label" x="945" y="204"  font-size="20" fill="#8c8fa3">05 · Events</text>
+    <!-- kata 6 (Repositories) -->
+    <rect x="0" y="230"  width="830" height="28" rx="3" fill="#e3d8be" opacity="0.70"/>
+    <text class="label" x="845" y="250"  font-size="20">06 · Repositories</text>
+    <!-- kata 7 (Bounded ctx)  -->
+    <rect x="0" y="276"  width="900" height="28" rx="3" fill="#e3d8be" opacity="0.62"/>
+    <text class="label" x="915" y="296"  font-size="20" fill="#8c8fa3">07 · Bounded Contexts</text>
+    <!-- kata 8 (HTTP)         -->
+    <rect x="0" y="322"  width="780" height="28" rx="3" fill="#d099d4" opacity="0.85"/>
+    <text class="label" x="795" y="342"  font-size="20">08 · HTTP boundary</text>
+    <!-- kata 9 (SQLite)       -->
+    <rect x="0" y="368"  width="690" height="28" rx="3" fill="#d099d4" opacity="0.72"/>
+    <text class="label" x="705" y="388"  font-size="20">09 · SQLite repo</text>
+    <!-- kata 10 (Wiring)      -->
+    <rect x="0" y="414"  width="600" height="28" rx="3" fill="#d099d4" opacity="0.58"/>
+    <text class="label" x="615" y="434"  font-size="20">10 · Wiring</text>
+  </g>
+
+  <!-- Bottom rule + author -->
+  <line x1="120" y1="1620" x2="1080" y2="1620" stroke="#ffaff3" stroke-width="2" opacity="0.65"/>
+  <text class="author" x="120" y="1700" font-size="36">Bryan Maass</text>
+  <text class="meta"   x="1080" y="1700" font-size="22" text-anchor="end">github.com/escherize/gleam-katas</text>
+</svg>

@@ -20,7 +20,7 @@ One DDD concept per chapter, paired with the Gleam patterns the compiler will en
 
 ### Appendix
 
-- [`docs/use.md`](../use.md): deeper treatment of the `use <-` desugaring, the four shapes it takes, and how to read chained `result.try` calls. Several chapters point here.
+- [`use.md`](use.md): deeper treatment of the `use <-` desugaring, the four shapes it takes, and how to read chained `result.try` calls. Several chapters point here.
 
 ## Prerequisites
 
