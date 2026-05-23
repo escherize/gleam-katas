@@ -47,10 +47,14 @@ fn parse_env_var(name: String, with parse, default default: a) -> a {
 
 fn env_vars_to_config() -> Config {
   let port: Int = parse_env_var("PORT", with: int.parse, default: 8080)
-  let order_repo = envoy.get("ORDER_REPO") |> result.unwrap("memory")
-  let repo_backend = case order_repo {
-    "memory" -> InMemory
-    path -> Sqlite(path)
+  let repo_backend = case envoy.get("ORDER_REPO") {
+    Ok("sqlite") -> {
+      let path = envoy.get("ORDER_DB") |> result.unwrap("orders.db")
+      Sqlite(path)
+    }
+    Ok("memory") -> InMemory
+    Error(Nil) -> InMemory
+    Ok(_) -> InMemory
   }
   Config(repo: repo_backend, port: port)
 }
