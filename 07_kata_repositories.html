@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>07. Kata 6: Repositories – DDD in Gleam</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./08_kata_bounded_contexts.html" rel="next">
+<link href="./06_kata_events.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-367522ac618891c39d4b2ae87ea7600e.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./07_kata_repositories.html"><span class="chapter-title">07. Kata 6: Repositories</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">DDD in Gleam</a> 
+        <div class="sidebar-tools-main">
+    <a href="https://github.com/escherize/gleam-katas/tree/solutions/docs/book/" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00_introduction.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">00: Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01_fundamentals.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">01. Gleam fundamentals for Kata 1</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02_kata_email.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">02. Kata 1: Value Objects (<code>Email</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03_kata_money.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">03. Kata 2: Value Objects with operations (<code>Money</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04_kata_customer.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">04. Kata 3: Entities (<code>Customer</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05_kata_order.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">05. Kata 4: Aggregates (<code>Order</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06_kata_events.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">06. Kata 5: Domain Events</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07_kata_repositories.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">07. Kata 6: Repositories</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08_kata_bounded_contexts.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">08. Kata 7: Bounded Contexts</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09_kata_http_boundary.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">09. Kata 8: Composition Root + HTTP Boundary</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10_kata_sqlite_repo.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">10. Kata 9: SQLite Repository</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11_kata_wiring.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">11. Kata 10: Wiring and Configuration</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12_in_practice.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">12. Putting It Into Practice</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./use.html" class="sidebar-item-text sidebar-link"><span class="chapter-title"><code>use</code> in Gleam — an in-depth explainer</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#concept" id="toc-concept" class="nav-link active" data-scroll-target="#concept">Concept</a></li>
+  <li><a href="#what-you-load-is-what-you-trust" id="toc-what-you-load-is-what-you-trust" class="nav-link" data-scroll-target="#what-you-load-is-what-you-trust">What you load is what you trust</a></li>
+  <li><a href="#the-use-case-is-the-orchestrator" id="toc-the-use-case-is-the-orchestrator" class="nav-link" data-scroll-target="#the-use-case-is-the-orchestrator">The use case is the orchestrator</a></li>
+  <li><a href="#new-gleam-fundamentals" id="toc-new-gleam-fundamentals" class="nav-link" data-scroll-target="#new-gleam-fundamentals">New Gleam fundamentals</a>
+  <ul class="collapse">
+  <li><a href="#records-of-functions" id="toc-records-of-functions" class="nav-link" data-scroll-target="#records-of-functions">Records of functions</a></li>
+  <li><a href="#why-we-need-otp" id="toc-why-we-need-otp" class="nav-link" data-scroll-target="#why-we-need-otp">Why we need OTP</a></li>
+  <li><a href="#otp-just-enough" id="toc-otp-just-enough" class="nav-link" data-scroll-target="#otp-just-enough">OTP, just enough</a></li>
+  <li><a href="#wrapping-the-actor-in-the-interface" id="toc-wrapping-the-actor-in-the-interface" class="nav-link" data-scroll-target="#wrapping-the-actor-in-the-interface">Wrapping the actor in the interface</a></li>
+  <li><a href="#error-wrapping-across-layers" id="toc-error-wrapping-across-layers" class="nav-link" data-scroll-target="#error-wrapping-across-layers">Error wrapping across layers</a></li>
+  </ul></li>
+  <li><a href="#task" id="toc-task" class="nav-link" data-scroll-target="#task">Task</a></li>
+  <li><a href="#hints-what-to-do" id="toc-hints-what-to-do" class="nav-link" data-scroll-target="#hints-what-to-do">Hints: what to do</a></li>
+  <li><a href="#walk-through" id="toc-walk-through" class="nav-link" data-scroll-target="#walk-through">Walk-through</a></li>
+  <li><a href="#critique" id="toc-critique" class="nav-link" data-scroll-target="#critique">Critique</a></li>
+  <li><a href="#takeaway" id="toc-takeaway" class="nav-link" data-scroll-target="#takeaway">Takeaway</a></li>
+  <li><a href="#whats-next" id="toc-whats-next" class="nav-link" data-scroll-target="#whats-next">What’s next</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/escherize/gleam-katas/edit/solutions/docs/book/07_kata_repositories.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/escherize/gleam-katas/blob/solutions/docs/book/07_kata_repositories.md" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-title">07. Kata 6: Repositories</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="concept" class="level2">
+<h2 class="anchored" data-anchor-id="concept">Concept</h2>
+<p>The aggregate has stayed pure. State and a command go in, a new state and events come out. That work is worth nothing once the process restarts.</p>
+<p>A repository turns an aggregate type into something you can load and save. The domain depends on the interface and the implementation lives in the infrastructure layer, so <code>order.gleam</code> stays ignorant of storage.</p>
+<p>Use cases then test without infrastructure. A test places an order through the repo, loads it back, and checks the events. Storage stays pluggable on the other side, so you swap an in-memory dict today for Postgres next week, and the use-case code on top doesn’t notice.</p>
+<p>A repository belongs to an aggregate, not an entity. You save an <code>Order</code> and an <code>OrderLine</code> rides along inside it. The aggregate is the consistency unit, and the repo’s contract is “give me back a valid one or fail.”</p>
+</section>
+<section id="what-you-load-is-what-you-trust" class="level2">
+<h2 class="anchored" data-anchor-id="what-you-load-is-what-you-trust">What you load is what you trust</h2>
+<p>The repository’s other job is to feed loaded data back through the smart constructors. A database row is raw fields, and turning those into a typed <code>Order</code> goes through <code>email.new</code>, <code>customer.new_id</code>, and friends, the same validation that keeps HTTP input honest. A corrupt row becomes <code>Error(CorruptRow(...))</code> rather than a thrown exception.</p>
+<p>The Kata 1 ceremony compounds here. Every reconstruction trusts the type because every construction went through the smart constructor. No “but I got it from the database, so I trust it” backdoor exists.</p>
+</section>
+<section id="the-use-case-is-the-orchestrator" class="level2">
+<h2 class="anchored" data-anchor-id="the-use-case-is-the-orchestrator">The use case is the orchestrator</h2>
+<p>A use case is a function that does one thing the application supports, like “place an order.” The shape is:</p>
+<pre><code>load via repo → call domain → save via repo → return events</code></pre>
+<p>Every step has a typed error. The use case wraps repo errors and domain errors in a <code>PlaceOrderError</code> so callers know which layer broke, which is where the chaining patterns from earlier katas come together: <code>result.try</code> from Kata 3 and the wrap-the-cause idea from Kata 5.</p>
+<p>The use case is the application boundary that HTTP, CLI, and message handlers translate into and out of. The domain sits beneath it. A test of a use case says “given these inputs, this is what happens” without spinning up any infrastructure.</p>
+<hr>
+</section>
+<section id="new-gleam-fundamentals" class="level2">
+<h2 class="anchored" data-anchor-id="new-gleam-fundamentals">New Gleam fundamentals</h2>
+<section id="records-of-functions" class="level3">
+<h3 class="anchored" data-anchor-id="records-of-functions">Records of functions</h3>
+<p>A Gleam record whose fields happen to be functions is still an ordinary record, and that record serves as an interface:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">type</span> <span class="dt">OrderRepo</span> <span class="op">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">OrderRepo</span><span class="op">(</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    find<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span><span class="dt">OrderId</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">Order</span><span class="op">,</span> <span class="dt">RepoError</span><span class="op">),</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    save<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span><span class="dt">Order</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">Nil</span><span class="op">,</span> <span class="dt">RepoError</span><span class="op">),</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">)</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>A <code>Customer</code> and an <code>OrderRepo</code> are the same kind of value. The fields differ and callers don’t care:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> order <span class="op">=</span> repo<span class="op">.</span><span class="fu">find</span><span class="op">(</span>id<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>A type with function fields is the interface, without an <code>IFooRepository&lt;Order&gt;</code> or a DI container in sight.</p>
+</section>
+<section id="why-we-need-otp" class="level3">
+<h3 class="anchored" data-anchor-id="why-we-need-otp">Why we need OTP</h3>
+<p>Gleam has no globals or mutable fields. State that needs to survive across function calls has to live somewhere, and that somewhere is a process.</p>
+<p>A process is a lightweight Erlang thread with a mailbox. You send messages and it handles them one at a time. The state is a value the process threads through its message loop, and outside the process you see replies rather than the state itself.</p>
+<p>For a repository, the process holds a <code>Dict(OrderId, Order)</code> and the messages ask “find this id” or “save this order.”</p>
+</section>
+<section id="otp-just-enough" class="level3">
+<h3 class="anchored" data-anchor-id="otp-just-enough">OTP, just enough</h3>
+<p>The vocabulary stays compact.</p>
+<ul>
+<li><code>Dict(k, v)</code> from <code>gleam/dict</code>, an immutable hash map. <code>dict.new()</code>, <code>dict.get(d, k) -&gt; Result(v, Nil)</code>, <code>dict.insert(d, k, v) -&gt; Dict(k, v)</code>.</li>
+<li><code>Subject(msg)</code>, a typed mailbox, the address of a process. Hold a <code>Subject(Find(...) | Save(...))</code> to send messages to a particular actor.</li>
+<li><code>actor.new(initial_state) |&gt; actor.on_message(handler) |&gt; actor.start</code> builds and starts the actor. Returns <code>Result(Started(Subject(msg)), StartError)</code>. The <code>Started.data</code> field is the subject outside callers use.</li>
+<li>The handler signature is <code>fn(state, msg) -&gt; actor.Next(state, msg)</code>. Return <code>actor.continue(new_state)</code> to loop, or <code>actor.stop()</code> to terminate.</li>
+<li><code>process.call(subject, timeout, builder)</code> does synchronous request/reply. The <code>builder</code> has type <code>fn(reply_subject) -&gt; msg</code>. You embed a reply subject in the outgoing message, the actor sends its response there, and <code>process.call</code> blocks until that response arrives or the timeout expires.</li>
+</ul>
+<p>A counter actor builds the same shape:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Msg</span> <span class="op">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Get</span><span class="op">(</span>reply<span class="op">:</span> <span class="dt">Subject</span><span class="op">(</span><span class="dt">Int</span><span class="op">))</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Set</span><span class="op">(</span>value<span class="op">:</span> <span class="dt">Int</span><span class="op">,</span> reply<span class="op">:</span> <span class="dt">Subject</span><span class="op">(</span><span class="dt">Nil</span><span class="op">))</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> <span class="fu">handle</span><span class="op">(</span>state<span class="op">:</span> <span class="dt">Int</span><span class="op">,</span> msg<span class="op">:</span> <span class="dt">Msg</span><span class="op">)</span> <span class="op">-&gt;</span> actor<span class="op">.</span><span class="dt">Next</span><span class="op">(</span><span class="dt">Int</span><span class="op">,</span> <span class="dt">Msg</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> msg <span class="op">{</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Get</span><span class="op">(</span>reply<span class="op">)</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>      process<span class="op">.</span><span class="fu">send</span><span class="op">(</span>reply<span class="op">,</span> state<span class="op">)</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>      actor<span class="op">.</span><span class="fu">continue</span><span class="op">(</span>state<span class="op">)</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Set</span><span class="op">(</span>value<span class="op">,</span> reply<span class="op">)</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>      process<span class="op">.</span><span class="fu">send</span><span class="op">(</span>reply<span class="op">,</span> <span class="dt">Nil</span><span class="op">)</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>      actor<span class="op">.</span><span class="fu">continue</span><span class="op">(</span>value<span class="op">)</span></span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Swap <code>Dict(OrderId, Order)</code> for <code>Int</code> and swap <code>Find</code>/<code>Save</code> for <code>Get</code>/<code>Set</code>, and you have a repository.</p>
+</section>
+<section id="wrapping-the-actor-in-the-interface" class="level3">
+<h3 class="anchored" data-anchor-id="wrapping-the-actor-in-the-interface">Wrapping the actor in the interface</h3>
+<p>The actor’s <code>Subject(Msg)</code> is an implementation detail. The use case sees an <code>OrderRepo</code>. Closures bridge the two:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">in_memory</span><span class="op">()</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">OrderRepo</span><span class="op">,</span> actor<span class="op">.</span><span class="dt">StartError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> started <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    actor<span class="op">.</span><span class="fu">new</span><span class="op">(</span>dict<span class="op">.</span><span class="fu">new</span><span class="op">())</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">|&gt;</span> actor<span class="op">.</span><span class="fu">on_message</span><span class="op">(</span>handle_msg<span class="op">)</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">|&gt;</span> actor<span class="op">.</span>start<span class="op">,</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">)</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> pid <span class="op">=</span> started<span class="op">.</span>data</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Ok</span><span class="op">(</span><span class="dt">OrderRepo</span><span class="op">(</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    find<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span>id<span class="op">)</span> <span class="op">{</span> process<span class="op">.</span><span class="fu">call</span><span class="op">(</span>pid<span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="kw">fn</span><span class="op">(</span>reply<span class="op">)</span> <span class="op">{</span> <span class="dt">Find</span><span class="op">(</span>id<span class="op">,</span> reply<span class="op">)</span> <span class="op">})</span> <span class="op">},</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    save<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span>o<span class="op">)</span>  <span class="op">{</span> process<span class="op">.</span><span class="fu">call</span><span class="op">(</span>pid<span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="kw">fn</span><span class="op">(</span>reply<span class="op">)</span> <span class="op">{</span> <span class="dt">Save</span><span class="op">(</span>o<span class="op">,</span> reply<span class="op">)</span> <span class="op">})</span> <span class="op">},</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="op">))</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Each function field closes over the actor’s subject. Callers never know the actor exists.</p>
+</section>
+<section id="error-wrapping-across-layers" class="level3">
+<h3 class="anchored" data-anchor-id="error-wrapping-across-layers">Error wrapping across layers</h3>
+<p>When two layers can fail, the error type names the layer:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">type</span> <span class="dt">PlaceOrderError</span> <span class="op">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">RepoFailed</span><span class="op">(</span><span class="dt">RepoError</span><span class="op">)</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">DomainFailed</span><span class="op">(</span><span class="dt">OrderError</span><span class="op">)</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The conversion happens via <code>result.map_error</code>, which relies on a Gleam fact that’s easy to miss: constructors are functions. When you write <code>pub type PlaceOrderError { RepoFailed(RepoError) | ... }</code>, <code>RepoFailed</code> does double duty. It works as a pattern in a <code>case</code> expression to destructure (<code>case e { RepoFailed(inner) -&gt; ... }</code>), and it also works as a value of type <code>fn(RepoError) -&gt; PlaceOrderError</code> that fits anywhere a function does.</p>
+<p><code>result.map_error</code> has signature <code>fn(Result(a, e1), fn(e1) -&gt; e2) -&gt; Result(a, e2)</code>. Given a Result and a function from the old error type to the new one, it applies that function on the <code>Error</code> branch and returns a Result whose error type is whatever the function returned.</p>
+<p>Pass <code>RepoFailed</code> (a function <code>fn(RepoError) -&gt; PlaceOrderError</code>) and the result’s error type becomes <code>PlaceOrderError</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> r1<span class="op">:</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">Order</span><span class="op">,</span> <span class="dt">RepoError</span><span class="op">)</span>        <span class="op">=</span> repo<span class="op">.</span><span class="fu">find</span><span class="op">(</span>id<span class="op">)</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> r2<span class="op">:</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">Order</span><span class="op">,</span> <span class="dt">PlaceOrderError</span><span class="op">)</span>  <span class="op">=</span> r1 <span class="op">|&gt;</span> result<span class="op">.</span><span class="fu">map_error</span><span class="op">(</span><span class="dt">RepoFailed</span><span class="op">)</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="co">//                                    RepoFailed is the function ^</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The original <code>RepoError</code> survives inside the <code>RepoFailed</code> wrapper, so the cause is intact, and callers pattern-match on <code>RepoFailed(_)</code> versus <code>DomainFailed(_)</code> to see which side broke.</p>
+<p><code>result.try</code> only chains when the inner Result and the outer function’s return type share an error type. Drop the <code>map_error</code> and the repo gives you <code>Result(_, RepoError)</code> while the outer function returns <code>Result(_, PlaceOrderError)</code>, so the types refuse to line up. <code>map_error(RepoFailed)</code> makes the chain type-check.</p>
+<hr>
+</section>
+</section>
+<section id="task" class="level2">
+<h2 class="anchored" data-anchor-id="task">Task</h2>
+<p>Add an accessor to <code>src/order.gleam</code> so the repo can extract the ID from an order to use as a dict key:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">id</span><span class="op">(</span>order<span class="op">:</span> <span class="dt">Order</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">OrderId</span> <span class="op">{</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  order<span class="op">.</span>id</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Create <code>src/order_repo.gleam</code> exposing:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">type</span> <span class="dt">RepoError</span> <span class="op">{</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">NotFound</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="co">// add more if you discover them</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">type</span> <span class="dt">OrderRepo</span> <span class="op">{</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">OrderRepo</span><span class="op">(</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    find<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span><span class="dt">OrderId</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">Order</span><span class="op">,</span> <span class="dt">RepoError</span><span class="op">),</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    save<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span><span class="dt">Order</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">Nil</span><span class="op">,</span> <span class="dt">RepoError</span><span class="op">),</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  <span class="op">)</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">in_memory</span><span class="op">()</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">OrderRepo</span><span class="op">,</span> actor<span class="op">.</span><span class="dt">StartError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">todo</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Create <code>src/place_order.gleam</code> exposing:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">type</span> <span class="dt">PlaceOrderError</span> <span class="op">{</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">RepoFailed</span><span class="op">(</span><span class="dt">RepoError</span><span class="op">)</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">DomainFailed</span><span class="op">(</span><span class="dt">OrderError</span><span class="op">)</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">run</span><span class="op">(</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  repo<span class="op">:</span> <span class="dt">OrderRepo</span><span class="op">,</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  id<span class="op">:</span> <span class="dt">OrderId</span><span class="op">,</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(#(</span><span class="dt">Order</span><span class="op">,</span> <span class="dt">List</span><span class="op">(</span><span class="dt">OrderEvent</span><span class="op">)),</span> <span class="dt">PlaceOrderError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">todo</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Wire <code>in_memory</code> to an actor that holds a <code>Dict(OrderId, Order)</code>. The actor handles <code>Find</code> and <code>Save</code> messages, and the use case loads, places, and saves.</p>
+<p>Tests go in <code>test/order_repo_test.gleam</code> (round-trip the repo) and <code>test/place_order_test.gleam</code> (run the use case end-to-end against an in-memory repo).</p>
+<hr>
+</section>
+<section id="hints-what-to-do" class="level2">
+<h2 class="anchored" data-anchor-id="hints-what-to-do">Hints: what to do</h2>
+<ol type="1">
+<li>Design the <code>OrderRepo</code> type before you write any code. <code>find</code> and <code>save</code> are the minimum; add <code>delete</code> or <code>list_for_customer</code> when a test asks for them and skip them until then.</li>
+<li><code>RepoError</code> is the next type to pin down. <code>NotFound</code> is obvious. Beyond that, <code>StorageError(reason)</code> covers network or disk failures and <code>CorruptRow(reason)</code> covers “I have a row but cannot reconstruct an Order.” Keep the type compact and grow it as you go.</li>
+<li><code>handle_msg</code> is the only real implementation work in <code>order_repo</code>. Match on <code>Find(id, reply)</code> or <code>Save(o, reply)</code>, run the matching <code>dict</code> op, send the answer with <code>process.send(reply, ...)</code>, then return <code>actor.continue(new_state)</code>. Each branch runs about five lines.</li>
+<li>Put the actor’s state type in the handler signature: <code>fn handle_msg(state: Dict(OrderId, Order), msg: Msg) -&gt; actor.Next(Dict(OrderId, Order), Msg)</code>. The signature is verbose, and the compiler keeps you honest.</li>
+<li><code>place_order.run</code> chains these steps:
+<ul>
+<li><code>use order &lt;- result.try(repo.find(id) |&gt; result.map_error(RepoFailed))</code></li>
+<li><code>use #(placed, events) &lt;- result.try(order.place(order) |&gt; result.map_error(DomainFailed))</code></li>
+<li><code>use _ &lt;- result.try(repo.save(placed) |&gt; result.map_error(RepoFailed))</code></li>
+<li><code>Ok(#(placed, events))</code></li>
+</ul></li>
+<li>For tests, write a helper that creates a repo and seeds it with an order. Most tests then set up state, call the use case, and assert against the events.</li>
+<li><code>process.call</code> blocks the calling process until the actor replies or times out. 100ms is plenty for tests.</li>
+<li><code>result.replace_error(NotFound)</code> is the cleanest way to turn the <code>Result(Order, Nil)</code> from <code>dict.get</code> into a <code>Result(Order, RepoError)</code>.</li>
+</ol>
+<hr>
+</section>
+<section id="walk-through" class="level2">
+<h2 class="anchored" data-anchor-id="walk-through">Walk-through</h2>
+<p>The actor’s message type does the design work. Each request becomes a variant, and each variant carries a typed reply <code>Subject</code> so the actor knows where to send the answer:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">type</span> <span class="dt">Msg</span> <span class="op">{</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Find</span><span class="op">(</span>id<span class="op">:</span> <span class="dt">OrderId</span><span class="op">,</span> reply_to<span class="op">:</span> <span class="dt">Subject</span><span class="op">(</span><span class="dt">Result</span><span class="op">(</span><span class="dt">Order</span><span class="op">,</span> <span class="dt">RepoError</span><span class="op">)))</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Save</span><span class="op">(</span>order<span class="op">:</span> <span class="dt">Order</span><span class="op">,</span> reply_to<span class="op">:</span> <span class="dt">Subject</span><span class="op">(</span><span class="dt">Result</span><span class="op">(</span><span class="dt">Nil</span><span class="op">,</span> <span class="dt">RepoError</span><span class="op">)))</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The reply types differ by message. The compiler refuses to let <code>Find</code> ever reply with <code>Nil</code> or <code>Save</code> with an <code>Order</code>, so the wiring stays honest without runtime checks.</p>
+<p><code>handle_msg</code> is then small:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> <span class="fu">handle_msg</span><span class="op">(</span>store<span class="op">,</span> msg<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> msg <span class="op">{</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Find</span><span class="op">(</span>id<span class="op">:,</span> reply_to<span class="op">:)</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> r <span class="op">=</span> store <span class="op">|&gt;</span> dict<span class="op">.</span><span class="fu">get</span><span class="op">(</span>id<span class="op">)</span> <span class="op">|&gt;</span> result<span class="op">.</span><span class="fu">replace_error</span><span class="op">(</span><span class="dt">NotFound</span><span class="op">)</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>      process<span class="op">.</span><span class="fu">send</span><span class="op">(</span>reply_to<span class="op">,</span> r<span class="op">)</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>      actor<span class="op">.</span><span class="fu">continue</span><span class="op">(</span>store<span class="op">)</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Save</span><span class="op">(</span>order<span class="op">:,</span> reply_to<span class="op">:)</span> <span class="op">-&gt;</span> <span class="op">{</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>      <span class="kw">let</span> new_state <span class="op">=</span> dict<span class="op">.</span><span class="fu">insert</span><span class="op">(</span>store<span class="op">,</span> order<span class="op">.</span><span class="fu">id</span><span class="op">(</span>order<span class="op">),</span> order<span class="op">)</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>      process<span class="op">.</span><span class="fu">send</span><span class="op">(</span>reply_to<span class="op">,</span> <span class="dt">Ok</span><span class="op">(</span><span class="dt">Nil</span><span class="op">))</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>      actor<span class="op">.</span><span class="fu">continue</span><span class="op">(</span>new_state<span class="op">)</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="op">}</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>result.replace_error(NotFound)</code> swaps the <code>Nil</code> from <code>dict.get</code> for the repo’s vocabulary in one call, since the missing-key case carries no detail worth preserving.</p>
+<p><code>in_memory</code> starts the actor and bridges its subject into the <code>OrderRepo</code> record, so callers see two function fields and never learn an actor exists:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">in_memory</span><span class="op">()</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">OrderRepo</span><span class="op">,</span> actor<span class="op">.</span><span class="dt">StartError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> started <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    actor<span class="op">.</span><span class="fu">new</span><span class="op">(</span>dict<span class="op">.</span><span class="fu">new</span><span class="op">())</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="op">|&gt;</span> actor<span class="op">.</span><span class="fu">on_message</span><span class="op">(</span>handle_msg<span class="op">)</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="op">|&gt;</span> actor<span class="op">.</span>start<span class="op">,</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">)</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> pid <span class="op">=</span> started<span class="op">.</span>data</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Ok</span><span class="op">(</span><span class="dt">OrderRepo</span><span class="op">(</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    find<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span>id<span class="op">)</span> <span class="op">{</span> process<span class="op">.</span><span class="fu">call</span><span class="op">(</span>pid<span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="kw">fn</span><span class="op">(</span>reply<span class="op">)</span> <span class="op">{</span> <span class="dt">Find</span><span class="op">(</span>id<span class="op">,</span> reply<span class="op">)</span> <span class="op">})</span> <span class="op">},</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    save<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span>o<span class="op">)</span>  <span class="op">{</span> process<span class="op">.</span><span class="fu">call</span><span class="op">(</span>pid<span class="op">,</span> <span class="dv">100</span><span class="op">,</span> <span class="kw">fn</span><span class="op">(</span>reply<span class="op">)</span> <span class="op">{</span> <span class="dt">Save</span><span class="op">(</span>o<span class="op">,</span> reply<span class="op">)</span> <span class="op">})</span> <span class="op">},</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  <span class="op">))</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The <code>fn(reply) { Find(id, reply) }</code> shape is <code>process.call</code>’s contract: it hands you a fresh reply subject, you embed it in the outgoing message, and <code>process.call</code> blocks until the actor sends a response there or 100ms passes.</p>
+<p><code>place_order.run</code> is the payoff:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">run</span><span class="op">(</span>repo<span class="op">,</span> id<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> order <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span>repo<span class="op">.</span><span class="fu">find</span><span class="op">(</span>id<span class="op">)</span> <span class="op">|&gt;</span> result<span class="op">.</span><span class="fu">map_error</span><span class="op">(</span><span class="dt">RepoFailed</span><span class="op">))</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> <span class="op">#(</span>placed<span class="op">,</span> events<span class="op">)</span> <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    order<span class="op">.</span><span class="fu">place</span><span class="op">(</span>order<span class="op">)</span> <span class="op">|&gt;</span> result<span class="op">.</span><span class="fu">map_error</span><span class="op">(</span><span class="dt">DomainFailed</span><span class="op">),</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">)</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> _ <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span>repo<span class="op">.</span><span class="fu">save</span><span class="op">(</span>placed<span class="op">)</span> <span class="op">|&gt;</span> result<span class="op">.</span><span class="fu">map_error</span><span class="op">(</span><span class="dt">RepoFailed</span><span class="op">))</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Ok</span><span class="op">(#(</span>placed<span class="op">,</span> events<span class="op">))</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Three <code>result.try</code> lines, each wrapping the layer-specific error in a <code>PlaceOrderError</code> variant. The function reads top-to-bottom like a checklist: load, transition, save, return. Nothing here knows the repo is an actor or that the actor holds a <code>Dict</code>, so swapping in a SQLite repo (kata 9) doesn’t move a line.</p>
+<p>The <code>map_error(RepoFailed)</code> calls do the type-juggling the “constructors as functions” detour set up. Without them the inner <code>Result(_, RepoError)</code> wouldn’t fit a chain expecting <code>Result(_, PlaceOrderError)</code>.</p>
+<hr>
+</section>
+<section id="critique" class="level2">
+<h2 class="anchored" data-anchor-id="critique">Critique</h2>
+<p>The 100ms timeout fits an in-memory dict and nothing else. A real I/O repo would take the timeout as config, since “long enough for the slow case, short enough that hung backends don’t pile up callers” is a deployment decision rather than a code one.</p>
+<p>The actor itself is a teaching scaffold. It serializes every request through one mailbox, which a <code>Dict</code> needs and a SQL connection pool already provides. A SQLite or Postgres repo drops the actor entirely; the in-memory dict has nowhere else to live, so it borrows one.</p>
+<p><code>StorageError(String)</code> is a placeholder. A real repo distinguishes “connection lost,” “constraint violated,” and “decode failed” because callers want to react differently. Grow the variant set as the production adapter forces the cases.</p>
+<p><code>list_all</code> is <code>pub</code> only because integration tests want to read everything back. Production repos almost never expose it directly, since returning the whole table is an outage waiting to happen. Filtered or paginated queries earn the field; an unbounded list doesn’t.</p>
+<p><code>order.id(order)</code> is the one accessor that crosses the aggregate’s opaque-type wall for the repo’s benefit, and it’s the right size: the repo needs a key to store under, and an explicit accessor is cheaper than exposing the record. Kata 9 extends the same idea (<code>snapshot</code>/<code>restore</code>) when the repo needs the full state.</p>
+<hr>
+</section>
+<section id="takeaway" class="level2">
+<h2 class="anchored" data-anchor-id="takeaway">Takeaway</h2>
+<p>The aggregate stayed pure. <code>order.place</code> still takes an <code>Order</code> and returns <code>Result(#(Order, List(OrderEvent)), OrderError)</code>, the same signature it had after kata 5. Nothing in <code>order.gleam</code> learned that storage exists.</p>
+<p>What the repository bought, in one chapter: a use case that takes an interface and swaps adapters in kata 9 without moving, tests that build a fresh in-memory backend per case without mocks, and layer errors that stay distinct all the way to the HTTP boundary where <code>RepoFailed(NotFound)</code> becomes a 404 and <code>DomainFailed(CannotPlaceEmptyOrder)</code> becomes a 422.</p>
+<p>The use case is the application layer the rest of the book builds on. HTTP handlers (kata 8) translate requests into use-case calls; bounded contexts (kata 7) react to the events use cases return. Its signature reads like a sentence about what the application does.</p>
+<hr>
+</section>
+<section id="whats-next" class="level2">
+<h2 class="anchored" data-anchor-id="whats-next">What’s next</h2>
+<p>Kata 7 introduces a second bounded context, Shipping, that reacts to Ordering’s events without either side importing the other’s internals. The repository pattern from this chapter carries straight through: <code>ShipmentRepo</code> is the same record-of-functions on the same actor scaffold, with the message type adapted to shipping’s queries.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./06_kata_events.html" class="pagination-link" aria-label="06. Kata 5: Domain Events">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">06. Kata 5: Domain Events</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./08_kata_bounded_contexts.html" class="pagination-link" aria-label="08. Kata 7: Bounded Contexts">
+        <span class="nav-page-text"><span class="chapter-title">08. Kata 7: Bounded Contexts</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/escherize/gleam-katas/edit/solutions/docs/book/07_kata_repositories.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/escherize/gleam-katas/blob/solutions/docs/book/07_kata_repositories.md" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></div></div></footer></body></html>

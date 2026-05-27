@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>10. Kata 9: SQLite Repository – DDD in Gleam</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./11_kata_wiring.html" rel="next">
+<link href="./09_kata_http_boundary.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-367522ac618891c39d4b2ae87ea7600e.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./10_kata_sqlite_repo.html"><span class="chapter-title">10. Kata 9: SQLite Repository</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">DDD in Gleam</a> 
+        <div class="sidebar-tools-main">
+    <a href="https://github.com/escherize/gleam-katas/tree/solutions/docs/book/" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00_introduction.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">00: Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01_fundamentals.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">01. Gleam fundamentals for Kata 1</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02_kata_email.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">02. Kata 1: Value Objects (<code>Email</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03_kata_money.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">03. Kata 2: Value Objects with operations (<code>Money</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04_kata_customer.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">04. Kata 3: Entities (<code>Customer</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05_kata_order.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">05. Kata 4: Aggregates (<code>Order</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06_kata_events.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">06. Kata 5: Domain Events</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07_kata_repositories.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">07. Kata 6: Repositories</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08_kata_bounded_contexts.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">08. Kata 7: Bounded Contexts</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09_kata_http_boundary.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">09. Kata 8: Composition Root + HTTP Boundary</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10_kata_sqlite_repo.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title">10. Kata 9: SQLite Repository</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11_kata_wiring.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">11. Kata 10: Wiring and Configuration</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12_in_practice.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">12. Putting It Into Practice</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./use.html" class="sidebar-item-text sidebar-link"><span class="chapter-title"><code>use</code> in Gleam — an in-depth explainer</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#concept" id="toc-concept" class="nav-link active" data-scroll-target="#concept">Concept</a></li>
+  <li><a href="#why-sqlite-for-a-learning-project" id="toc-why-sqlite-for-a-learning-project" class="nav-link" data-scroll-target="#why-sqlite-for-a-learning-project">Why SQLite for a learning project</a></li>
+  <li><a href="#the-interesting-design-problem" id="toc-the-interesting-design-problem" class="nav-link" data-scroll-target="#the-interesting-design-problem">The interesting design problem</a></li>
+  <li><a href="#new-gleam-fundamentals" id="toc-new-gleam-fundamentals" class="nav-link" data-scroll-target="#new-gleam-fundamentals">New Gleam fundamentals</a>
+  <ul class="collapse">
+  <li><a href="#sqlight-sqlite-from-gleam" id="toc-sqlight-sqlite-from-gleam" class="nav-link" data-scroll-target="#sqlight-sqlite-from-gleam"><code>sqlight</code>: SQLite from Gleam</a></li>
+  <li><a href="#gleamjson-encoding-and-decoding-json" id="toc-gleamjson-encoding-and-decoding-json" class="nav-link" data-scroll-target="#gleamjson-encoding-and-decoding-json"><code>gleam/json</code>: encoding and decoding JSON</a></li>
+  <li><a href="#the-snapshotrestore-back-door-pattern" id="toc-the-snapshotrestore-back-door-pattern" class="nav-link" data-scroll-target="#the-snapshotrestore-back-door-pattern">The snapshot/restore back door pattern</a></li>
+  </ul></li>
+  <li><a href="#task" id="toc-task" class="nav-link" data-scroll-target="#task">Task</a>
+  <ul class="collapse">
+  <li><a href="#edit-srcorder.gleam-add-the-snapshot-back-door" id="toc-edit-srcorder.gleam-add-the-snapshot-back-door" class="nav-link" data-scroll-target="#edit-srcorder.gleam-add-the-snapshot-back-door">1. Edit <code>src/order.gleam</code>: add the snapshot back door</a></li>
+  <li><a href="#create-srcorder_repo_sqlite.gleam-the-sqlite-adapter" id="toc-create-srcorder_repo_sqlite.gleam-the-sqlite-adapter" class="nav-link" data-scroll-target="#create-srcorder_repo_sqlite.gleam-the-sqlite-adapter">2. Create <code>src/order_repo_sqlite.gleam</code>: the SQLite adapter</a></li>
+  <li><a href="#create-testorder_repo_sqlite_test.gleam" id="toc-create-testorder_repo_sqlite_test.gleam" class="nav-link" data-scroll-target="#create-testorder_repo_sqlite_test.gleam">3. Create <code>test/order_repo_sqlite_test.gleam</code></a></li>
+  </ul></li>
+  <li><a href="#hints" id="toc-hints" class="nav-link" data-scroll-target="#hints">Hints</a></li>
+  <li><a href="#walk-through" id="toc-walk-through" class="nav-link" data-scroll-target="#walk-through">Walk-through</a></li>
+  <li><a href="#critique" id="toc-critique" class="nav-link" data-scroll-target="#critique">Critique</a></li>
+  <li><a href="#takeaway" id="toc-takeaway" class="nav-link" data-scroll-target="#takeaway">Takeaway</a></li>
+  <li><a href="#whats-next" id="toc-whats-next" class="nav-link" data-scroll-target="#whats-next">What’s next</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/escherize/gleam-katas/edit/solutions/docs/book/10_kata_sqlite_repo.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/escherize/gleam-katas/blob/solutions/docs/book/10_kata_sqlite_repo.md" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-title">10. Kata 9: SQLite Repository</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="concept" class="level2">
+<h2 class="anchored" data-anchor-id="concept">Concept</h2>
+<p><code>OrderRepo</code> keeps <code>find</code> and <code>save</code> as fields on a record so that the implementation can change without touching the use case. The only implementation so far is an in-memory actor, so restart the process and every order vanishes.</p>
+<p>Write <code>pub fn sqlite(connection) -&gt; OrderRepo</code> against the same <code>OrderRepo</code> interface, backed by a SQLite database. No other file in the system changes. <code>place_order.run</code> keeps calling the same record, and so do the handler and the existing <code>in_memory</code>-based tests.</p>
+<p>That swap, with no other code aware of it, is the repository pattern in concrete form. If you find yourself touching the use case to make this work, the design drifted somewhere upstream and that’s where the fix belongs.</p>
+</section>
+<section id="why-sqlite-for-a-learning-project" class="level2">
+<h2 class="anchored" data-anchor-id="why-sqlite-for-a-learning-project">Why SQLite for a learning project</h2>
+<p>SQLite needs no daemon and no port, only a file path or <code>:memory:</code> for tests. You write <code>CREATE TABLE</code>, bind parameters, decode rows. The lessons transfer to Postgres with a different library (<code>pog</code> where you’d use <code>sqlight</code>) and the same testing model. Per-test isolation comes from calling <code>sqlight.open(":memory:")</code> in the test itself, which removes the fixture-and-rollback dance. File-based storage in production means backups are <code>cp</code>, which suffices for an app with one writer.</p>
+<p>SQLite handles concurrent writers across processes badly. The kata sidesteps the issue; production cannot. One process with many readers and one writer is fine; once you need many writers across processes, reach for Postgres.</p>
+</section>
+<section id="the-interesting-design-problem" class="level2">
+<h2 class="anchored" data-anchor-id="the-interesting-design-problem">The interesting design problem</h2>
+<p><code>Order</code> is opaque. <code>OrderLine</code> is private to <code>order.gleam</code>, so the type doesn’t exist outside the module. When the SQLite adapter loads a row from the database, it can’t construct an <code>Order</code> from raw fields. There is no public constructor that takes <code>(id, customer_id, lines, status)</code>. The adapter has options.</p>
+<ol type="1">
+<li><p>Replay the public API on load, calling <code>order.new(id, cid)</code>, then <code>order.add_line(...)</code> per line, then <code>order.place(...)</code> if the status was <code>Placed</code>. The public API emits events (<code>OrderCreated</code>, <code>LineAdded</code>, <code>OrderPlaced</code>), so loading from disk emits fake events as if the actions were happening fresh, which disqualifies the approach.</p></li>
+<li><p>Punch a rehydrate back door in <code>order.gleam</code> that the persistence layer uses and application code doesn’t. Add <code>pub type OrderSnapshot { ... }</code> with <code>pub fn snapshot(o) -&gt; OrderSnapshot</code> and <code>pub fn restore(s) -&gt; Order</code>. The snapshot exposes internal state in a controlled public shape without leaking the private types. The repo serializes the snapshot to JSON, stores it, decodes it back, and calls <code>restore</code>.</p></li>
+</ol>
+<p>Option 2 is what every production system using opaque aggregates with state-stored persistence ends up doing. The public API enforces business invariants on transitions; the snapshot/restore pair handles persistence. That separation between transition rules and bytes on disk is the lesson of this kata, with SQL as the vehicle.</p>
+<hr>
+</section>
+<section id="new-gleam-fundamentals" class="level2">
+<h2 class="anchored" data-anchor-id="new-gleam-fundamentals">New Gleam fundamentals</h2>
+<section id="sqlight-sqlite-from-gleam" class="level3">
+<h3 class="anchored" data-anchor-id="sqlight-sqlite-from-gleam"><code>sqlight</code>: SQLite from Gleam</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">sqlight</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co">// Open</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="cf">assert</span> <span class="dt">Ok</span><span class="op">(</span>conn<span class="op">)</span> <span class="op">=</span> sqlight<span class="op">.</span><span class="fu">open</span><span class="op">(</span><span class="st">":memory:"</span><span class="op">)</span>  <span class="co">// or "file:orders.db"</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">// DDL: no params, no result</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="cf">assert</span> <span class="dt">Ok</span><span class="op">(</span><span class="dt">Nil</span><span class="op">)</span> <span class="op">=</span> sqlight<span class="op">.</span><span class="fu">exec</span><span class="op">(</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">"CREATE TABLE orders (id TEXT PRIMARY KEY, data TEXT NOT NULL)"</span><span class="op">,</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  on<span class="op">:</span> conn<span class="op">,</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="op">)</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">// Parameterized query: INSERT/UPDATE/DELETE</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="cf">assert</span> <span class="dt">Ok</span><span class="op">(</span>_<span class="op">)</span> <span class="op">=</span> sqlight<span class="op">.</span><span class="fu">query</span><span class="op">(</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="st">"INSERT INTO orders (id, data) VALUES (?, ?)"</span><span class="op">,</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  on<span class="op">:</span> conn<span class="op">,</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  with<span class="op">:</span> <span class="op">[</span>sqlight<span class="op">.</span><span class="fu">text</span><span class="op">(</span><span class="st">"ORDER-001"</span><span class="op">),</span> sqlight<span class="op">.</span><span class="fu">text</span><span class="op">(</span>json_blob<span class="op">)],</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  expecting<span class="op">:</span> decode<span class="op">.</span><span class="fu">success</span><span class="op">(</span><span class="dt">Nil</span><span class="op">),</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="op">)</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">// SELECT with decoder</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="cf">assert</span> <span class="dt">Ok</span><span class="op">(</span>rows<span class="op">)</span> <span class="op">=</span> sqlight<span class="op">.</span><span class="fu">query</span><span class="op">(</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  <span class="st">"SELECT data FROM orders WHERE id = ?"</span><span class="op">,</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  on<span class="op">:</span> conn<span class="op">,</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  with<span class="op">:</span> <span class="op">[</span>sqlight<span class="op">.</span><span class="fu">text</span><span class="op">(</span>id_string<span class="op">)],</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  expecting<span class="op">:</span> decode<span class="op">.</span><span class="fu">field</span><span class="op">(</span><span class="st">"data"</span><span class="op">,</span> decode<span class="op">.</span>string<span class="op">),</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>sqlight.text/int/float/bool/blob/null/nullable</code> build parameter values. <code>decode.string/int/field/...</code> from <code>gleam/dynamic/decode</code> builds the row decoder.</p>
+<p>Errors come back as <code>sqlight.SqlightError(code, message, offset)</code>. Match on <code>code</code> for specific cases like <code>Constraint</code> or <code>Corrupt</code>.</p>
+</section>
+<section id="gleamjson-encoding-and-decoding-json" class="level3">
+<h3 class="anchored" data-anchor-id="gleamjson-encoding-and-decoding-json"><code>gleam/json</code>: encoding and decoding JSON</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">gleam/json</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co">// Encode</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> body <span class="op">=</span> json<span class="op">.</span><span class="fu">object</span><span class="op">([</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">#(</span><span class="st">"id"</span><span class="op">,</span> json<span class="op">.</span><span class="fu">string</span><span class="op">(</span>id_str<span class="op">)),</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">#(</span><span class="st">"status"</span><span class="op">,</span> json<span class="op">.</span><span class="fu">string</span><span class="op">(</span><span class="st">"Placed"</span><span class="op">)),</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="op">#(</span><span class="st">"lines"</span><span class="op">,</span> json<span class="op">.</span><span class="fu">array</span><span class="op">(</span>of<span class="op">:</span> json<span class="op">.</span>object<span class="op">,</span> items<span class="op">:</span> line_objects<span class="op">)),</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="op">])</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> blob <span class="op">=</span> json<span class="op">.</span><span class="fu">to_string</span><span class="op">(</span>body<span class="op">)</span>  <span class="co">// -&gt; String</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">// Decode</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">gleam/dynamic/decode</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> order_decoder <span class="op">=</span> <span class="op">{</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> id <span class="op">&lt;-</span> decode<span class="op">.</span><span class="fu">field</span><span class="op">(</span><span class="st">"id"</span><span class="op">,</span> decode<span class="op">.</span>string<span class="op">)</span></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> status <span class="op">&lt;-</span> decode<span class="op">.</span><span class="fu">field</span><span class="op">(</span><span class="st">"status"</span><span class="op">,</span> decode<span class="op">.</span>string<span class="op">)</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  decode<span class="op">.</span><span class="fu">success</span><span class="op">(#(</span>id<span class="op">,</span> status<span class="op">))</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="cf">assert</span> <span class="dt">Ok</span><span class="op">(</span>parsed<span class="op">)</span> <span class="op">=</span> json<span class="op">.</span><span class="fu">parse</span><span class="op">(</span>blob<span class="op">,</span> order_decoder<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The decoder type is <code>decode.Decoder(t)</code>, built by chaining <code>decode.field</code> calls inside a <code>use</code> block. The hints below walk through what an <code>Order</code>-shaped decoder looks like.</p>
+<section id="the-lsp-writes-the-boilerplate" class="level4">
+<h4 class="anchored" data-anchor-id="the-lsp-writes-the-boilerplate">The LSP writes the boilerplate</h4>
+<p>The Gleam language server ships “Generate to-json function” and “Generate decoder” as code actions. With the cursor on a <code>pub type Foo { ... }</code> line, trigger code actions in your editor (<code>⌘.</code> in VS Code, <code>&lt;space&gt;a</code> in Helix, <code>&lt;leader&gt;ca</code> in most nvim setups) and pick the generator. The LSP writes the encoder or decoder next to the type, populated from the fields it can see, and emits <code>todo</code> placeholders for nested types it hasn’t reached yet. Covering the full Order tree takes several invocations and a styling pass.</p>
+</section>
+<section id="visible-code-is-the-feature-not-the-cost" class="level4">
+<h4 class="anchored" data-anchor-id="visible-code-is-the-feature-not-the-cost">Visible code is the feature, not the cost</h4>
+<p>Other ecosystems hide encoders behind derive macros (<code>#[derive(Serialize)]</code>), annotations (<code>@JsonProperty</code>), or typeclass instances, all generated at compile time or via reflection. Gleam asks you to write the function (or have the LSP write it into your source). A few keystrokes more, paid back in: encoders you can read, grep, and step through; field renames that surface as compile errors instead of silent serialization drift; per-type encoding strategies without decorator soup; and one mechanism whether the bytes go to JSON, MessagePack, log lines, or fixtures.</p>
+</section>
+</section>
+<section id="the-snapshotrestore-back-door-pattern" class="level3">
+<h3 class="anchored" data-anchor-id="the-snapshotrestore-back-door-pattern">The snapshot/restore back door pattern</h3>
+<p>Add these to <code>src/order.gleam</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="do">/// A serializable view of an Order's internal state. Public so the</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="do">/// persistence layer can read/write it; not for application code.</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">type</span> <span class="dt">OrderSnapshot</span> <span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">OrderSnapshot</span><span class="op">(</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    id<span class="op">:</span> <span class="dt">OrderId</span><span class="op">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    customer_id<span class="op">:</span> <span class="dt">CustomerId</span><span class="op">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    lines<span class="op">:</span> <span class="dt">List</span><span class="op">(</span><span class="dt">LineSnapshot</span><span class="op">),</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    status<span class="op">:</span> <span class="dt">OrderStatus</span><span class="op">,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>  <span class="op">)</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">type</span> <span class="dt">LineSnapshot</span> <span class="op">{</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="dt">LineSnapshot</span><span class="op">(</span>sku<span class="op">:</span> <span class="dt">String</span><span class="op">,</span> quantity<span class="op">:</span> <span class="dt">Int</span><span class="op">,</span> unit_price<span class="op">:</span> <span class="dt">Money</span><span class="op">)</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">snapshot</span><span class="op">(</span>order<span class="op">:</span> <span class="dt">Order</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">OrderSnapshot</span> <span class="op">{</span></span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>  <span class="dt">OrderSnapshot</span><span class="op">(</span></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    id<span class="op">:</span> order<span class="op">.</span>id<span class="op">,</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    customer_id<span class="op">:</span> order<span class="op">.</span>customer_id<span class="op">,</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>    lines<span class="op">:</span> list<span class="op">.</span><span class="fu">map</span><span class="op">(</span>order<span class="op">.</span>lines<span class="op">,</span> <span class="kw">fn</span><span class="op">(</span>l<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>      <span class="dt">LineSnapshot</span><span class="op">(</span>sku<span class="op">:</span> l<span class="op">.</span>sku<span class="op">,</span> quantity<span class="op">:</span> l<span class="op">.</span>quantity<span class="op">,</span> unit_price<span class="op">:</span> l<span class="op">.</span>unit_price<span class="op">)</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">}),</span></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    status<span class="op">:</span> order<span class="op">.</span>status<span class="op">,</span></span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>  <span class="op">)</span></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">restore</span><span class="op">(</span>snap<span class="op">:</span> <span class="dt">OrderSnapshot</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Order</span> <span class="op">{</span></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Order</span><span class="op">(</span></span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>    id<span class="op">:</span> snap<span class="op">.</span>id<span class="op">,</span></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>    customer_id<span class="op">:</span> snap<span class="op">.</span>customer_id<span class="op">,</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>    lines<span class="op">:</span> list<span class="op">.</span><span class="fu">map</span><span class="op">(</span>snap<span class="op">.</span>lines<span class="op">,</span> <span class="kw">fn</span><span class="op">(</span>l<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>      <span class="dt">OrderLine</span><span class="op">(</span>sku<span class="op">:</span> l<span class="op">.</span>sku<span class="op">,</span> quantity<span class="op">:</span> l<span class="op">.</span>quantity<span class="op">,</span> unit_price<span class="op">:</span> l<span class="op">.</span>unit_price<span class="op">)</span></span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a>    <span class="op">}),</span></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>    status<span class="op">:</span> snap<span class="op">.</span>status<span class="op">,</span></span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>  <span class="op">)</span></span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>restore</code> is total. It assumes the snapshot is valid because the snapshot came from <code>snapshot</code>, which only produces valid snapshots from valid orders. The persistence layer makes sure the bytes round-trip. The domain doesn’t re-validate.</p>
+<p>The snapshot uses <code>LineSnapshot</code> instead of the private <code>OrderLine</code>. That keeps <code>OrderLine</code> private (no one outside <code>order.gleam</code> can construct one directly) while still giving the persistence layer a stable public shape to work with.</p>
+<p><code>Money</code>, <code>OrderStatus</code>, <code>OrderId</code>, and <code>CustomerId</code> are already public, and embed in the snapshot as-is.</p>
+<hr>
+</section>
+</section>
+<section id="task" class="level2">
+<h2 class="anchored" data-anchor-id="task">Task</h2>
+<p>Add the dependency:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode sh code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">gleam</span> add sqlight gleam_json</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Then create one file and edit one:</p>
+<section id="edit-srcorder.gleam-add-the-snapshot-back-door" class="level3">
+<h3 class="anchored" data-anchor-id="edit-srcorder.gleam-add-the-snapshot-back-door">1. Edit <code>src/order.gleam</code>: add the snapshot back door</h3>
+<p>Add <code>OrderSnapshot</code>, <code>LineSnapshot</code>, <code>pub fn snapshot</code>, and <code>pub fn restore</code> as described above. Around 30 new lines. The existing public API stays unchanged. The snapshot/restore pair is additive.</p>
+</section>
+<section id="create-srcorder_repo_sqlite.gleam-the-sqlite-adapter" class="level3">
+<h3 class="anchored" data-anchor-id="create-srcorder_repo_sqlite.gleam-the-sqlite-adapter">2. Create <code>src/order_repo_sqlite.gleam</code>: the SQLite adapter</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">sqlite</span><span class="op">(</span>conn<span class="op">:</span> <span class="dt">Connection</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">OrderRepo</span><span class="op">,</span> <span class="dt">RepoError</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Responsibilities:</p>
+<ol type="1">
+<li>Run schema setup (<code>CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, data TEXT NOT NULL)</code>) on connection.</li>
+<li>Build closures for <code>find</code> and <code>save</code>.
+<ul>
+<li><code>find</code> queries by id. If no row, return <code>Error(NotFound)</code>. If a row, decode the <code>data</code> JSON into an <code>OrderSnapshot</code>, call <code>order.restore</code>, return <code>Ok(order)</code>.</li>
+<li><code>save</code> serializes via <code>order.snapshot</code> to JSON and runs <code>INSERT OR REPLACE INTO orders (id, data) VALUES (?, ?)</code>. On success it returns <code>Ok(Nil)</code>. Map sqlight errors to <code>RepoError</code>.</li>
+</ul></li>
+<li>Return the <code>OrderRepo</code> record.</li>
+</ol>
+<p>Around 60 to 80 lines, including the JSON encode/decode boilerplate.</p>
+</section>
+<section id="create-testorder_repo_sqlite_test.gleam" class="level3">
+<h3 class="anchored" data-anchor-id="create-testorder_repo_sqlite_test.gleam">3. Create <code>test/order_repo_sqlite_test.gleam</code></h3>
+<p>Same shape as <code>order_repo_test.gleam</code> from kata 6. Open <code>:memory:</code> per test, build the repo, exercise the find/save round-trip, NotFound, and overwrite. The point is that the same assertions run against a SQLite-backed repo because the interface is the same.</p>
+<p>Bonus: a <code>place_order</code> integration test using a SQLite repo. It’s a copy of the existing integration test with the constructor swapped.</p>
+<hr>
+</section>
+</section>
+<section id="hints" class="level2">
+<h2 class="anchored" data-anchor-id="hints">Hints</h2>
+<ol type="1">
+<li><p>Build the schema before the queries. Write the <code>CREATE TABLE</code> and run it. Add a no-op <code>find</code> that always returns <code>NotFound</code> and a no-op <code>save</code> that always succeeds. The actor-shaped flow has to run end to end with the SQLite layer in place before query logic goes on top of a solid scaffold.</p></li>
+<li><p>JSON encoding is verbose, and the verbosity is the point. <code>Money</code> becomes <code>{"amount": 150, "currency": "USD"}</code>; <code>Currency</code> and <code>OrderStatus</code> flatten to strings; <code>LineSnapshot</code> becomes an object. The full encoder runs roughly 30 lines of nested <code>json.object</code> calls.</p></li>
+<li><p>Decoders mirror encoders. For each <code>json.object([("foo", ...)])</code> you wrote, there’s a <code>decode.field("foo", ...)</code> you write. Build decoders for <code>Money</code>, <code>Currency</code>, <code>OrderStatus</code>, and <code>LineSnapshot</code>, then compose them into <code>OrderSnapshot</code>.</p></li>
+<li><p>Use <code>INSERT OR REPLACE</code> for save. It handles insert-new and update-existing in one statement. The aggregate is the unit of save, so you replace the row.</p></li>
+<li><p>Each <code>pub fn ..._test</code> opens its own <code>:memory:</code> connection. Sharing one connection means tests share state, and the suite goes flaky.</p></li>
+<li><p><code>sqlight.nullable(sqlight.text, optional_string)</code> is the binding helper for optional fields. Nothing in the current schema is null, but optional fields land in any real-world extension.</p></li>
+<li><p>The hardest debugging path is silent JSON drift. If <code>snapshot |&gt; encode |&gt; string |&gt; decode |&gt; restore</code> doesn’t round-trip exactly, load-time failures look mysterious. Write a unit test for the round-trip independent of SQLite: encode an order to JSON, decode it back, assert equality. It catches drift before SQL is involved.</p></li>
+<li><p><code>pub fn sqlite(conn)</code> takes an already-open connection rather than opening one itself. That keeps the repo testable (<code>:memory:</code> in tests, file connections in main) and lets the composition root own the connection lifecycle.</p></li>
+</ol>
+<hr>
+</section>
+<section id="walk-through" class="level2">
+<h2 class="anchored" data-anchor-id="walk-through">Walk-through</h2>
+<p>The schema fits in one table.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> <span class="cf">IF</span> <span class="kw">NOT</span> <span class="kw">EXISTS</span> orders (</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">id</span>   TEXT <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">data</span> TEXT <span class="kw">NOT</span> <span class="kw">NULL</span>  <span class="co">-- JSON snapshot of OrderSnapshot</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>);</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>One row per order holds the serialized snapshot. Saving is <code>INSERT OR REPLACE</code>; finding is <code>SELECT data WHERE id = ?</code>. No joins or transactions yet.</p>
+<p><code>find</code> reads the row, decodes the JSON to an <code>OrderSnapshot</code>, and hands it to <code>order.restore</code>. <code>save</code> runs the inverse: <code>order.snapshot</code>, encode to JSON, <code>INSERT OR REPLACE</code>. The id comes from the <code>pub fn id</code> accessor added in kata 6.</p>
+<p>If decode fails, the row is corrupt. Add <code>CorruptRow(reason: String)</code> to <code>RepoError</code> so callers see something other than a generic decode error.</p>
+<p>The substitution at the composition root is one line:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">// before</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="cf">assert</span> <span class="dt">Ok</span><span class="op">(</span>repo<span class="op">)</span> <span class="op">=</span> order_repo<span class="op">.</span><span class="fu">in_memory</span><span class="op">()</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co">// after</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="cf">assert</span> <span class="dt">Ok</span><span class="op">(</span>conn<span class="op">)</span> <span class="op">=</span> sqlight<span class="op">.</span><span class="fu">open</span><span class="op">(</span><span class="st">"file:orders.db"</span><span class="op">)</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> <span class="cf">assert</span> <span class="dt">Ok</span><span class="op">(</span>repo<span class="op">)</span> <span class="op">=</span> order_repo_sqlite<span class="op">.</span><span class="fu">sqlite</span><span class="op">(</span>conn<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><code>place_order.run</code>, the HTTP handler, and the use-case tests keep running unchanged. That swap is the repository pattern’s whole point.</p>
+<hr>
+</section>
+<section id="critique" class="level2">
+<h2 class="anchored" data-anchor-id="critique">Critique</h2>
+<p>Schema migrations are absent. <code>CREATE TABLE IF NOT EXISTS</code> works for v1. The second version that adds a column needs a migration story: <code>ALTER TABLE</code>, a version table, and so on. Production apps reach for <code>dbmate</code> or <code>sqitch</code> for SQL files. In Gleam you can hand-roll a tracker that records applied migrations in a <code>_migrations</code> table. That work lives outside this kata.</p>
+<p>Optimistic concurrency control is absent too. Two concurrent saves can race, and the second silently overwrites the first. For an actor-writes setup, which the in-memory actor model gives you by construction, that’s fine. For multi-process writes, add a <code>version INT</code> column, check it on update, and fail with a <code>Conflict</code> variant when stale. Postgres and DynamoDB use the same pattern.</p>
+<p>JSON storage is opaque to SQL. You can’t write <code>SELECT * WHERE total &gt; 100</code> because <code>total</code> lives inside the JSON blob. SQLite’s <code>json_extract</code> lets you query into the JSON, but it’s slow without expression indexes. If you need rich querying, denormalize, splitting into <code>orders</code> and <code>order_lines</code> tables (the schema design covered in the chapter on <code>Shape</code> versus DB storage). The lesson on the rehydration back door doesn’t change.</p>
+<p>Streaming and batch operations stay out of scope. Each extension (<code>find_all</code>, <code>find_by_customer</code>, paginated reads) adds a field to <code>OrderRepo</code> and a closure in the constructor.</p>
+<p>The connection is a shared resource. SQLite handles one writer. Multiple opens to the same file work, but write-serialization happens at the OS level. For production, wrap the <code>sqlight.Connection</code> in an actor that serializes access, or turn on WAL mode with <code>PRAGMA journal_mode=WAL</code>.</p>
+<p><code>restore</code> trusts the snapshot. A bad row could produce an <code>Order</code> whose state violates aggregate invariants. The current <code>restore</code> builds the record directly without re-checking. That’s defensible when the snapshot came from a valid order originally, and risky when a hand-edited row or migration bug slips through. A paranoid <code>restore</code> would re-run invariants, at the cost of going through the public API (re-emitting events) or duplicating validation logic. The project picks one tradeoff and records the choice.</p>
+<hr>
+</section>
+<section id="takeaway" class="level2">
+<h2 class="anchored" data-anchor-id="takeaway">Takeaway</h2>
+<p>Kata 6 made the repository pattern plausible because an in-memory adapter worked. This kata makes it load-bearing: SQLite slots in behind the same record of two functions, and the use case, handler, and scenario tests run against either backend unchanged. The domain code never learned what storage looks like because the type system gave it no way to find out, and systems built on that constraint survive a storage migration five years later.</p>
+<p>The snapshot/restore pair is the right Gleam answer to the serialization boundary. Other languages reach for <code>@JsonSerializable</code> annotations or reflection-based ORMs; Gleam asks you to write the encoder by hand, so when the schema drifts the function to update is the one whose field list no longer matches the type.</p>
+<hr>
+</section>
+<section id="whats-next" class="level2">
+<h2 class="anchored" data-anchor-id="whats-next">What’s next</h2>
+<p>The stack is now production-shape: typed domain, events as facts, repositories as interfaces, bounded contexts, HTTP boundary, composition root, and disk persistence. Everything beyond is specialization.</p>
+<p>The final chapter steps out of katas and into practice: what experience teaches that the exercises don’t, what to skip, when to escalate, and how to keep the codebase from drifting back into the soup the patterns exist to prevent.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./09_kata_http_boundary.html" class="pagination-link" aria-label="09. Kata 8: Composition Root + HTTP Boundary">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">09. Kata 8: Composition Root + HTTP Boundary</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./11_kata_wiring.html" class="pagination-link" aria-label="11. Kata 10: Wiring and Configuration">
+        <span class="nav-page-text"><span class="chapter-title">11. Kata 10: Wiring and Configuration</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/escherize/gleam-katas/edit/solutions/docs/book/10_kata_sqlite_repo.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/escherize/gleam-katas/blob/solutions/docs/book/10_kata_sqlite_repo.md" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></div></div></footer></body></html>

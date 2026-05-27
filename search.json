@@ -1,0 +1,1335 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "DDD in Gleam",
+    "section": "",
+    "text": "Welcome\nA 10-kata progression that teaches idiomatic Gleam through the vocabulary of Domain-Driven Design. Each chapter pairs one DDD concept with the smallest Gleam toolkit that lets the compiler check it.\nThe chapter labels say DDD; the lessons are idiomatic Gleam.",
+    "crumbs": [
+      "Welcome"
+    ]
+  },
+  {
+    "objectID": "index.html#prerequisites",
+    "href": "index.html#prerequisites",
+    "title": "DDD in Gleam",
+    "section": "Prerequisites",
+    "text": "Prerequisites\n\nA working Gleam toolchain (gleam on your PATH).\nComfort with one statically-typed functional or object-oriented language. The book assumes no prior Gleam.",
+    "crumbs": [
+      "Welcome"
+    ]
+  },
+  {
+    "objectID": "index.html#how-to-work-through-it",
+    "href": "index.html#how-to-work-through-it",
+    "title": "DDD in Gleam",
+    "section": "How to work through it",
+    "text": "How to work through it\n\nRead the concept and fundamentals sections.\nOpen the source file under src/ and try the kata before peeking. The tests under test/ are the spec.\nRun gleam test to confirm.\nRead the walk-through and critique, then compare to your version.\n\nThe reference solutions live in src/; the tests in test/ are their spec. The companion repository is at github.com/escherize/gleam-katas.",
+    "crumbs": [
+      "Welcome"
+    ]
+  },
+  {
+    "objectID": "index.html#a-note-on-style",
+    "href": "index.html#a-note-on-style",
+    "title": "DDD in Gleam",
+    "section": "A note on style",
+    "text": "A note on style\nEach chapter follows roughly this shape:\n\nConcept: the DDD idea in plain language.\nNew Gleam fundamentals: what this kata needs that earlier ones didn’t cover. (Omitted when a chapter introduces no new language features.)\nThe task: function signatures and rules.\nHints: enough to unblock without spoiling the design.\nWalk-through: the reference solution, with reasoning.\nCritique: what holds up, what shifts as the system grows.\nTakeaway: the property the code now guarantees, and why it matters past the toy example.",
+    "crumbs": [
+      "Welcome"
+    ]
+  },
+  {
+    "objectID": "00_introduction.html",
+    "href": "00_introduction.html",
+    "title": "00: Introduction",
+    "section": "",
+    "text": "What DDD is\nA hands-on walkthrough of Domain-Driven Design fundamentals, using Gleam to make the patterns enforceable rather than aspirational. Each chapter pairs one DDD concept with the Gleam features that make it compile-time true.\nThe book lives where the two subjects meet, and neither one receives a full survey of its own.\nDomain-Driven Design organizes software so the business vocabulary and its invariants become the load-bearing structure of the code, not an afterthought layered on top of CRUD models.\nA few ideas do most of the work. Illegal states should be unrepresentable; if “an order with zero lines cannot be placed” is a rule, the type should forbid it rather than every call site checking for it. Concepts have shapes, so a CustomerId deserves its own type, and so does Money, which makes the rest of the system more honest about what it handles. Behavior lives with the data, so “an order is placed” is a method on the order itself, with its own preconditions, returning either a new state or a typed reason it can’t transition. No service elsewhere flips a flag on its behalf.\nMost introductions to DDD bury these ideas under pattern catalogs: Repositories, Factories, Anti-Corruption Layers. Those patterns are real, but they sit downstream of the ideas above.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>00: Introduction</span>"
+    ]
+  },
+  {
+    "objectID": "00_introduction.html#why-gleam",
+    "href": "00_introduction.html#why-gleam",
+    "title": "00: Introduction",
+    "section": "Why Gleam",
+    "text": "Why Gleam\nGleam is a compact language with the feel of a careful editor’s pass. It ships with very few escape hatches. let assert, panic, and FFI exist, but each one is a deliberate keystroke rather than an idiomatic shortcut.\n\nAlgebraic data types with exhaustive pattern matching. You name every alternative, and the compiler refuses to let you forget one.\nOpaque types, a one-keyword feature that lets a module hide its constructor. Outside the module, the type exists, but the only way to build one is through functions you expose.\nFailure is a value rather than an exception or a null (Result(a, e), Option(a)). Callers can’t pretend it didn’t happen.\nEvery branch is a case rather than an if, so you must consider the alternatives by name.\nOne control-flow primitive (use &lt;-) covers guards, chaining, resource handling, and whatever custom flow you’d otherwise invent.\n\nThese features map onto what DDD wants:\n\n\n\n\n\n\n\nDDD wants…\nGleam gives you…\n\n\n\n\nIllegal states unrepresentable\nOpaque types + smart constructors\n\n\nValidate at the boundary, trust within\nResult + types as proof\n\n\nNamed, exhaustive failure modes\nSum-type errors + case\n\n\nAggregates as consistency boundaries\nModules + opacity + record update syntax\n\n\nLinear top-to-bottom domain rules\nuse &lt;- for guard chains\n\n\n\nYou can do DDD in any language. Gleam fits it well enough that the patterns stop being conventions and start being what the compiler checks.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>00: Introduction</span>"
+    ]
+  },
+  {
+    "objectID": "00_introduction.html#why-this-kata-progression",
+    "href": "00_introduction.html#why-this-kata-progression",
+    "title": "00: Introduction",
+    "section": "Why this kata progression",
+    "text": "Why this kata progression\nThe book climbs from one-file types up to a wired backend, each kata adding one DDD concept and only the Gleam features that concept needs.\n\nValue Objects (Email, Money, katas 1–2). Opaque types, smart constructors, error sums, and use chaining.\nEntities (Customer, kata 3). The same toolkit, but identity matters; ID types, equality semantics, and state transitions modeled as new immutable values.\nAggregates (Order, kata 4). Several internal pieces with invariants spanning them, so the work shifts to hiding internals behind one front door.\nDomain Events (OrderPlaced and friends, kata 5). State transitions that also report what happened.\nRepositories (kata 6). Records of functions as interfaces; OTP actors hidden behind them.\nBounded Contexts (kata 7). Folders as boundaries; events as the integration contract.\nComposition Root + HTTP Boundary (kata 8). Wisp/Mist with a Deps record. The shell translates; the core decides.\nSQLite Repository (kata 9). Same interface, real persistence, snapshot/restore for opaque aggregates.\nWiring and Configuration (kata 10). Env vars become typed config; a factory routes config to adapters.\n\nBy the end you can read or write idiomatic Gleam domain code without having taken either subject as a course first.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>00: Introduction</span>"
+    ]
+  },
+  {
+    "objectID": "00_introduction.html#how-to-read-this",
+    "href": "00_introduction.html#how-to-read-this",
+    "title": "00: Introduction",
+    "section": "How to read this",
+    "text": "How to read this\nEach chapter follows the same shape:\n\nConcept: the DDD idea in plain language.\nGleam fundamentals you need: enough to do the kata, not a full language tour.\nThe task: a function signature and the rules it must satisfy.\nHints / what to do: nudges to unblock without spoiling the design.\nA walk-through: the reference solution, with reasoning.\nCritique: where the solution holds up, where it could be tightened, and how it strains as the system grows around it.\nTakeaway: what the code now guarantees, and why that matters past the toy example.\n\nType the code and satisfy the tests before you read the walk-through, because the exercises won’t do their work otherwise.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>00: Introduction</span>"
+    ]
+  },
+  {
+    "objectID": "00_introduction.html#gleam-resources",
+    "href": "00_introduction.html#gleam-resources",
+    "title": "00: Introduction",
+    "section": "Gleam resources",
+    "text": "Gleam resources\nUseful tabs to keep open while you work through the book:\n\nThe Gleam Language Tour, interactive and in-browser, and the best place to look up any language feature.\nStandard library reference: gleam/string, gleam/list, gleam/result, and the rest. You’ll reach for these in every kata.\nGleam documentation index, with guides and cheatsheets, including a Gleam-for-Rust and Gleam-for-Elixir one.\nGleam home for install instructions if you don’t already have the gleam CLI.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>00: Introduction</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html",
+    "href": "01_fundamentals.html",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "",
+    "text": "Sum types (a.k.a. tagged unions)\nJust enough Gleam to do Kata 1; each chapter adds to the toolkit. Readers fluent in Gleam can skim the headers.\nDeclare a custom type as a fixed set of variants:\nA Currency value is exactly one of USD, EUR, or GBP. There’s no null and no string \"USD\" impersonating the variant; the type has three values and that’s the set.\nVariants can carry data:\nCircle(3.0) and Rectangle(2.0, 5.0) are both Shape values, the same type holding differently shaped data, hence “sum type.”",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html#sum-types-a.k.a.-tagged-unions",
+    "href": "01_fundamentals.html#sum-types-a.k.a.-tagged-unions",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "",
+    "text": "pub type Currency {\n  USD\n  EUR\n  GBP\n}\n\n\npub type Shape {\n  Circle(radius: Float)\n  Rectangle(width: Float, height: Float)\n}",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html#records-variants-with-named-fields",
+    "href": "01_fundamentals.html#records-variants-with-named-fields",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "Records (variants with named fields)",
+    "text": "Records (variants with named fields)\nA type with a single variant of the same name is Gleam’s record/struct:\npub type Email {\n  Email(value: String)\n}\nConstruction is Email(\"foo@bar.com\") and field access is email.value. The type and the variant sharing a name is idiomatic Gleam.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html#opaque-one-keyword-one-consequence",
+    "href": "01_fundamentals.html#opaque-one-keyword-one-consequence",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "opaque: one keyword, one consequence",
+    "text": "opaque: one keyword, one consequence\nA custom type’s constructor is public by default and travels with the type; opaque keeps the constructor private to its module:\npub opaque type Email {\n  Email(value: String)\n}\nOutside this module the type Email still exists and behaves like any other value, but the constructor Email(...) is gone and field access email.value no longer compiles. The only way to get an Email is to call a function the module exports, which validates whatever it wants before wrapping the value, so the type system guarantees nothing else gets through.\nThat mechanism is the foundation for “make illegal states unrepresentable,” and forgetting opaque is the most common mistake when starting out.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html#resulta-e-failure-as-a-value",
+    "href": "01_fundamentals.html#resulta-e-failure-as-a-value",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "Result(a, e): failure as a value",
+    "text": "Result(a, e): failure as a value\nGleam has no exceptions, so a function that can fail returns a Result:\n// Built-in. Conceptually:\npub type Result(a, e) {\n  Ok(a)\n  Error(e)\n}\nA typical signature is Result(ValidThing, SomeError), where Ok(v) holds the success value and Error(e) holds why it failed.\nCallers case on the result to reach either branch, and there’s no way to grab the value without acknowledging failure. (let assert Ok(x) = ... exists for crash-on-error scenarios, mostly tests.)",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html#smart-constructors",
+    "href": "01_fundamentals.html#smart-constructors",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "Smart constructors",
+    "text": "Smart constructors\nA smart constructor is the function outside callers use to build an opaque value. It validates and either wraps the value in the type or returns a typed error:\npub fn new(raw: String) -&gt; Result(Email, EmailError) {\n  // ...validate, then either Ok(Email(...)) or Error(...)\n}\nConvention names it new; combined with opaque, it becomes the only door into the type.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html#case-gleams-only-conditional",
+    "href": "01_fundamentals.html#case-gleams-only-conditional",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "case: Gleam’s only conditional",
+    "text": "case: Gleam’s only conditional\nGleam has no if, only case, which pattern-matches on a value:\ncase x {\n  0 -&gt; \"zero\"\n  1 -&gt; \"one\"\n  _ -&gt; \"other\"\n}\nThe compiler checks exhaustiveness: a missed variant in a match on a sum type breaks the build. “Named failure modes” stop being a discipline and become a compiler-enforced property.\n_ matches anything and serves as the catch-all once the rest are explicit.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html#pattern-matching-on-shapes",
+    "href": "01_fundamentals.html#pattern-matching-on-shapes",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "Pattern matching on shapes",
+    "text": "Pattern matching on shapes\ncase can destructure as it matches, so patterns end up describing shapes:\ncase string.split(input, \"@\") {\n  [\"\"]        -&gt; Error(Empty)               // single empty element\n  [_]         -&gt; Error(MissingAt)           // single non-empty element\n  [\"\", _]     -&gt; Error(MissingLocal)        // empty before @\n  [_, \"\"]     -&gt; Error(MissingDomain)       // empty after @\n  [_, _]      -&gt; Ok(...)                    // exactly two non-empty parts\n  _           -&gt; Error(TooManyAt)           // three or more\n}\nEach branch names a shape the input could take, so the structure of the data does the work that chained guards do elsewhere. The surprise coming from imperative languages is that a sequence of guards like if (!hasAt) ... else if (!domain) ... collapses into one case.\nOrder of patterns matters when they overlap: [\"\"] must come before [_] because the empty string matches both, and case picks the first.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html#modules-and-imports",
+    "href": "01_fundamentals.html#modules-and-imports",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "Modules and imports",
+    "text": "Modules and imports\nOne file is one module, named after the file, and public items use pub:\nimport gleam/string  // standard library\nimport email         // sibling module in the same project\n\npub fn foo() { string.trim(\"  hi  \") }\nA module’s contents are reachable as module.name, or specific names can come into scope:\nimport email.{type Email}  // brings the type into scope unqualified\n\npub fn handle(e: Email) { ... }\nFunctions stay namespaced as email.new(...); only the type alias is unqualified.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "01_fundamentals.html#the-toolkit-so-far",
+    "href": "01_fundamentals.html#the-toolkit-so-far",
+    "title": "01. Gleam fundamentals for Kata 1",
+    "section": "The toolkit so far",
+    "text": "The toolkit so far\n\nA type defined with one or many variants.\nopaque to restrict construction to the defining module.\nA smart constructor returning Result(YourType, YourError).\nValidation via case on the structure of the input.\nEither Ok(YourType(...)) or Error(NamedReason) as the return.\n\nThe rest of the book waits on an attempt at the kata.",
+    "crumbs": [
+      "<span class='chapter-number'>2</span>  <span class='chapter-title'>01. Gleam fundamentals for Kata 1</span>"
+    ]
+  },
+  {
+    "objectID": "02_kata_email.html",
+    "href": "02_kata_email.html",
+    "title": "02. Kata 1: Value Objects (Email)",
+    "section": "",
+    "text": "Concept\nA value object has no identity beyond its attributes. Two Emails with the same string are the same email, the way 5 and 5 are the same 5. Nothing distinguishes one from another beyond the string itself.\nThe exercise enforces one rule: you cannot construct an invalid Email. Validate once at the boundary where the string arrives, and from then on any function taking an Email parameter can trust it without defensive checks.\nIn Gleam that means an opaque type with a smart constructor returning Result.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>02. Kata 1: Value Objects (`Email`)</span>"
+    ]
+  },
+  {
+    "objectID": "02_kata_email.html#task",
+    "href": "02_kata_email.html#task",
+    "title": "02. Kata 1: Value Objects (Email)",
+    "section": "Task",
+    "text": "Task\nCreate src/email.gleam exposing:\npub opaque type Email {\n  Email(value: String)\n}\n\npub type EmailError {\n  Empty\n  MissingAt\n  // add more as you see fit\n}\n\npub fn new(raw: String) -&gt; Result(Email, EmailError) {\n  // your code\n}\n\npub fn to_string(email: Email) -&gt; String {\n  // your code\n}\nRules:\n\nTrim leading/trailing whitespace.\nReject empty (after trimming).\nExactly one @.\nBoth sides of @ non-empty.\n\nThe tests in test/email_test.gleam are the spec. Run with gleam test.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>02. Kata 1: Value Objects (`Email`)</span>"
+    ]
+  },
+  {
+    "objectID": "02_kata_email.html#hints",
+    "href": "02_kata_email.html#hints",
+    "title": "02. Kata 1: Value Objects (Email)",
+    "section": "Hints",
+    "text": "Hints\n\nTrim first. gleam/string has string.trim/1, and trimming before any structural check folds a class of edge cases into the empty case.\nSkip boolean guards. Don’t write if has_at && local_is_non_empty && domain_is_non_empty. Gleam has no if, so a cleaner shape opens up.\nInspect what string.split(trimmed, \"@\") returns. It’s a List(String), and the shape of that list (its length, which elements are empty) is the validation. Sketch every meaningful shape on paper before writing code.\nPattern order matters. When two patterns can match the same input (e.g. [\"\"] and [_]), put the more specific one first. The empty string matches both, but the right name for it is Empty, not MissingAt.\nAdd error variants as you discover them. The starter has Empty and MissingAt. At least two more meaningful failure modes are waiting. Name each one, because that’s the point of a sum-type error.\nFor to_string, reach into the inner field directly. Inside the module that works because the constructor is in scope; outside, it wouldn’t.\n\nIf 15 or 20 minutes pass without traction, scroll down. Brute-forcing it defeats the point; the goal is to internalize the pattern.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>02. Kata 1: Value Objects (`Email`)</span>"
+    ]
+  },
+  {
+    "objectID": "02_kata_email.html#walk-through",
+    "href": "02_kata_email.html#walk-through",
+    "title": "02. Kata 1: Value Objects (Email)",
+    "section": "Walk-through",
+    "text": "Walk-through\nopaque does the work, since nothing outside this module can build an Email without calling new. Value objects need exactly that guarantee.\nCheck [\"\"] before [_]: an empty string after trimming splits into [\"\"] (a one-element list holding the empty string), which also matches [_]. When patterns overlap, the more specific one goes first.\nA typed error beats a Bool because the variant names which failure happened, and the compiler forces every caller to handle both branches. That information survives all the way out to wherever the error surfaces, whether that’s an HTTP response or a log line.\nUse Ok(Email(trimmed)) rather than Ok(Email(local &lt;&gt; \"@\" &lt;&gt; domain)). Some solutions rebuild the email from the split parts, but the split already did its job as validation and trimmed is the string you want.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>02. Kata 1: Value Objects (`Email`)</span>"
+    ]
+  },
+  {
+    "objectID": "02_kata_email.html#critique",
+    "href": "02_kata_email.html#critique",
+    "title": "02. Kata 1: Value Objects (Email)",
+    "section": "Critique",
+    "text": "Critique\n\nAfter splitting on @, [_] matches a non-empty token, so the input had no @. MissingAt reads correctly here.\n[\"\"] only happens when trimmed is \"\". Trimming first folds whitespace-only inputs into the Empty case for free.\nA name like MissingTextBeforeAt reads better than EmptyLocalPart for the audience that sees these errors. Domain language is part of the design.\n\n\nOut of scope on purpose\nThis validator is a teaching exercise, not a production email parser. What it doesn’t do, and what you’d add if it had to ship:\n\nRFC 5322 corner cases. Quoted local parts, comments, escaped @ characters, IP-literal domains, all rejected here and all legal in the RFC.\nInternationalized email (RFC 6531). user@bücher.de and 测试@example.com both fail the “ASCII-friendly” assumptions baked into the split. A real validator either pre-encodes to IDNA/punycode or accepts Unicode locals.\nWhitespace inside the address. Trimming the outside isn’t the same as rejecting \" @example.com\", which currently passes both halves of the [_, _] check with a leading space.\nDeliverability. Even a syntactically perfect address may not exist. That’s an MX-lookup / send-and-confirm problem, not a parser problem.\n\nThe point of the kata is that whatever rules you settle on, the opaque-type-plus-smart-constructor shape makes them enforceable in one place. Swap in a stricter parser tomorrow and the rest of the codebase doesn’t move.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>02. Kata 1: Value Objects (`Email`)</span>"
+    ]
+  },
+  {
+    "objectID": "02_kata_email.html#takeaway",
+    "href": "02_kata_email.html#takeaway",
+    "title": "02. Kata 1: Value Objects (Email)",
+    "section": "Takeaway",
+    "text": "Takeaway\nAnywhere in your codebase with a parameter email: Email, the compiler guarantees new already validated it. You validate once at the boundary and the type carries the proof everywhere else, so downstream code never has to recheck.\nThat’s the upfront ceremony the design pays for. Every later layer of the system assumes the email is well-formed, because the type system permits nothing else.",
+    "crumbs": [
+      "<span class='chapter-number'>3</span>  <span class='chapter-title'>02. Kata 1: Value Objects (`Email`)</span>"
+    ]
+  },
+  {
+    "objectID": "03_kata_money.html",
+    "href": "03_kata_money.html",
+    "title": "03. Kata 2: Value Objects with operations (Money)",
+    "section": "",
+    "text": "Concept\nSame shape as Email (opaque type, smart constructor), under two new pressures.\nThe rules of the domain become rules of the type. The type carries the operations that respect its invariants alongside the data they operate on.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>03. Kata 2: Value Objects with operations (`Money`)</span>"
+    ]
+  },
+  {
+    "objectID": "03_kata_money.html#concept",
+    "href": "03_kata_money.html#concept",
+    "title": "03. Kata 2: Value Objects with operations (Money)",
+    "section": "",
+    "text": "A Money has two attributes (amount and currency) that have to stay coherent.\nadd(usd, eur) is nonsense the type system should refuse.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>03. Kata 2: Value Objects with operations (`Money`)</span>"
+    ]
+  },
+  {
+    "objectID": "03_kata_money.html#new-gleam-fundamentals",
+    "href": "03_kata_money.html#new-gleam-fundamentals",
+    "title": "03. Kata 2: Value Objects with operations (Money)",
+    "section": "New Gleam fundamentals",
+    "text": "New Gleam fundamentals\nKata 1 needed an opaque type and a smart constructor. This one adds record update syntax and the use &lt;- desugaring.\n\nRecord update syntax\nTo produce a modified copy of a record without re-listing every field:\nlet updated = Money(..money, amount: 0)\n..money says “take all the fields from this value, then override the named ones.” Without it, aggregate code drowns in field repetition.\n\n\nuse &lt;-: guards as functions\nThe same precondition shows up at the head of every operation:\ncase a.currency == b.currency {\n  False -&gt; Error(CurrencyMismatch)\n  True -&gt; {\n    // do the work\n  }\n}\nPull the precondition into a helper that takes a callback:\nfn require_same_currency(\n  a: Money,\n  b: Money,\n  then: fn() -&gt; Result(t, MoneyError),\n) -&gt; Result(t, MoneyError) {\n  case a.currency == b.currency {\n    False -&gt; Error(CurrencyMismatch)\n    True -&gt; then()\n  }\n}\nThen call it with use:\npub fn add(a: Money, b: Money) -&gt; Result(Money, MoneyError) {\n  use &lt;- require_same_currency(a, b)\n  new(a.amount + b.amount, a.currency)\n}\nuse &lt;- f(...) is sugar for f(..., fn() { rest_of_block }). It lifts the remainder of the block into a callback and passes it as the helper’s last argument.\nA few mechanical facts:\n\nuse &lt;- with no binding gives the callback zero arguments, which makes it a guard.\nuse x &lt;- f(...) gives the callback one argument, for unwrapping (Kata 3).\nThe helper decides whether to call the callback. On a currency mismatch it returns its own error and the rest of the block never runs.\nThe lowercase t in Result(t, MoneyError) is a generic type variable. The helper works whether the calling body returns Result(Money, ...) or Result(Order, ...).\n\nAggregates built on this pattern read top-to-bottom like a list of business rules. For a deeper explainer, see use.md.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>03. Kata 2: Value Objects with operations (`Money`)</span>"
+    ]
+  },
+  {
+    "objectID": "03_kata_money.html#task",
+    "href": "03_kata_money.html#task",
+    "title": "03. Kata 2: Value Objects with operations (Money)",
+    "section": "Task",
+    "text": "Task\nCreate src/money.gleam exposing:\npub type Currency {\n  USD\n  EUR\n  GBP\n}\n\npub opaque type Money {\n  Money(amount: Int, currency: Currency)\n}\n\npub type MoneyError {\n  NegativeAmount\n  CurrencyMismatch\n}\n\n// Amount is in minor units (cents/pence). $1.50 -&gt; new(150, USD).\npub fn new(amount: Int, currency: Currency) -&gt; Result(Money, MoneyError)\npub fn add(a: Money, b: Money) -&gt; Result(Money, MoneyError)\npub fn subtract(a: Money, b: Money) -&gt; Result(Money, MoneyError)\npub fn multiply(money: Money, factor: Int) -&gt; Result(Money, MoneyError)\npub fn same_currency(a: Money, b: Money) -&gt; Bool\npub fn zero(money: Money) -&gt; Money\nRules:\n\nReject negative amounts in new.\nadd and subtract fail with CurrencyMismatch if currencies differ.\nsubtract shouldn’t produce negative money (returns NegativeAmount).\nmultiply with a negative factor should also be rejected.\nzero(money) returns a money of the same currency with amount 0.\n\nThe tests in test/money_test.gleam are the spec.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>03. Kata 2: Value Objects with operations (`Money`)</span>"
+    ]
+  },
+  {
+    "objectID": "03_kata_money.html#hints-what-to-do",
+    "href": "03_kata_money.html#hints-what-to-do",
+    "title": "03. Kata 2: Value Objects with operations (Money)",
+    "section": "Hints: what to do",
+    "text": "Hints: what to do\n\nWrite the naive version first, with each operation doing its own checks: subtract checks currencies and verifies the result isn’t negative, multiply checks negativity. Get the tests passing before refactoring.\nThen look for duplication. Operations that touch two Moneys repeat the same currency check, and operations that produce a new Money re-check the negative-amount rule on their own.\nRoute everything through new so it becomes the source of truth for the negative-amount invariant. subtract loses its own check, and multiply inherits the check for free.\nLift the currency check into a helper. Write require_same_currency with the shape from the fundamentals section, then call it with use &lt;-. Every operation now reads as a guard followed by the computation.\nzero(money) returns Money, not Result(Money, _). The value 0 always satisfies the invariant, so the function is total. Leave Result out of the return type when nothing can go wrong.\nTrace the test for multiply(m, -1). Why NegativeAmount? If multiply routes through new, the answer falls out, which is the point of funneling.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>03. Kata 2: Value Objects with operations (`Money`)</span>"
+    ]
+  },
+  {
+    "objectID": "03_kata_money.html#walk-through",
+    "href": "03_kata_money.html#walk-through",
+    "title": "03. Kata 2: Value Objects with operations (Money)",
+    "section": "Walk-through",
+    "text": "Walk-through\n\nFunneling through new\nEvery constructor path re-validates. subtract drops its own amount &gt;= 0 check because new already runs it, and multiply catches negative factors for the same reason. The non-negative invariant lives in one place, so no caller can construct a Money that violates it.\n\n\nuse &lt;- require_same_currency(a, b)\nA naive solution duplicates the currency check across every operation. Pull the check into a named helper and each operation turns into a flat list of business rules, where every entry is “require same currency, then do the work.”\nThe mechanical desugar:\npub fn add(a: Money, b: Money) -&gt; Result(Money, MoneyError) {\n  require_same_currency(a, b, fn() {\n    new(a.amount + b.amount, a.currency)\n  })\n}\nuse is sugar for that callback shape, so reading one form teaches the other.\n\n\nzero is total\nThe function returns Money rather than Result(Money, _) because 0 always satisfies the non-negative rule. Record update (Money(..money, amount: 0)) carries the currency through.\n\n\nAmounts as Int minor units\nFloats and money don’t mix, because 0.1 + 0.2 ≠ 0.3 in IEEE-754, which is why banks store cents instead of dollars. Choosing Int here is a domain modeling decision the type records.\n\n\nWhy add returns Result\nA primitive add(usd_5, eur_3) silently hands back 8 of nothing. The domain-modeled version returns CurrencyMismatch, so the bug now sits in the type signature where the caller has to deal with it.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>03. Kata 2: Value Objects with operations (`Money`)</span>"
+    ]
+  },
+  {
+    "objectID": "03_kata_money.html#critique",
+    "href": "03_kata_money.html#critique",
+    "title": "03. Kata 2: Value Objects with operations (Money)",
+    "section": "Critique",
+    "text": "Critique\n\nsame_currency is pub as a forward lean: the next kata (Order) wants to compare line currencies without reaching for == on the currency field, and a named predicate reads better than a.currency == b.currency at the call site. Strictly speaking, keeping it private and inlining one comparison in Order would be the smaller diff. Pick whichever rule you prefer (“expose only what’s used” vs “expose the named predicate when one exists”) and stay consistent. The book picks the latter. The private helper (require_same_currency) stays private because it’s a use &lt;- callback shape, not a predicate.\nThe module ignores integer overflow, which is fine for toy domain code. For production money handling, use a bigint type or guard explicitly.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>03. Kata 2: Value Objects with operations (`Money`)</span>"
+    ]
+  },
+  {
+    "objectID": "03_kata_money.html#takeaway",
+    "href": "03_kata_money.html#takeaway",
+    "title": "03. Kata 2: Value Objects with operations (Money)",
+    "section": "Takeaway",
+    "text": "Takeaway\nThe module has one way to produce a Money, and that path passes every invariant. No caller can lie about currency or smuggle in a negative amount, so every Money in the system is valid by construction.\n“Make illegal states unrepresentable” is the slogan, and the type now embodies it.",
+    "crumbs": [
+      "<span class='chapter-number'>4</span>  <span class='chapter-title'>03. Kata 2: Value Objects with operations (`Money`)</span>"
+    ]
+  },
+  {
+    "objectID": "04_kata_customer.html",
+    "href": "04_kata_customer.html",
+    "title": "04. Kata 3: Entities (Customer)",
+    "section": "",
+    "text": "Concept\nA customer named “Alice” who renames to “Alice Smith” tomorrow remains the same customer, because identity persists while attributes change.\nEquality runs on the ID. Gleam’s == lies about entities; two snapshots of one customer at different moments compare unequal because their fields differ, though the person is one. Entities want an explicit ID type and a same_X function that compares by ID, so == stays out of entity code.\nValue objects start paying rent here. Customer contains the Email from Kata 1, so the customer layer skips re-validation; the type already carries the proof.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>04. Kata 3: Entities (`Customer`)</span>"
+    ]
+  },
+  {
+    "objectID": "04_kata_customer.html#new-gleam-fundamentals",
+    "href": "04_kata_customer.html#new-gleam-fundamentals",
+    "title": "04. Kata 3: Entities (Customer)",
+    "section": "New Gleam fundamentals",
+    "text": "New Gleam fundamentals\n\nImporting types from other modules\nimport email.{type Email}\nThis pulls the type Email into scope by bare name, so the annotation reads email: Email rather than email: email.Email. Functions still need their namespace (email.new(...)), since only the type alias travels unqualified.\n\n\nOne-arg use: result.try\nCustomer composes a CustomerId and an Email, both of which run through smart constructors, so a boundary function that turns raw strings into a Customer chains three constructions that can each fail:\ncase email.new(raw_email) {\n  Error(e) -&gt; Error(InvalidEmail(e))\n  Ok(email) -&gt; case new_id(raw_id) {\n    Error(e) -&gt; Error(e)\n    Ok(id) -&gt; new(id, raw_name, email)\n  }\n}\nuse flattens that pyramid:\nuse email &lt;- result.try(email.new(raw) |&gt; result.map_error(InvalidEmail))\nuse id &lt;- result.try(new_id(raw_id))\nnew(id, raw_name, email)\nresult.try(r, fn(value) { ... }) runs the callback only when r is Ok; on Error the expression short-circuits to that error, so use turns the call site into a readable sequence of validations. result.map_error(f) rewraps an inner error to fit the outer error type when the two don’t line up.\nThe minimal Kata 3 won’t force you onto this, but you’ll reach for it the moment you start composing types. See use.md for the deeper treatment.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>04. Kata 3: Entities (`Customer`)</span>"
+    ]
+  },
+  {
+    "objectID": "04_kata_customer.html#task",
+    "href": "04_kata_customer.html#task",
+    "title": "04. Kata 3: Entities (Customer)",
+    "section": "Task",
+    "text": "Task\nCreate src/customer.gleam exposing:\nimport email.{type Email}\n\npub opaque type CustomerId {\n  CustomerId(value: String)\n}\n\npub opaque type Customer {\n  Customer(id: CustomerId, name: String, email: Email)\n}\n\npub type CustomerError {\n  EmptyName\n  EmptyId\n}\n\npub fn new_id(raw: String) -&gt; Result(CustomerId, CustomerError)\npub fn new(id: CustomerId, name: String, email: Email) -&gt; Result(Customer, CustomerError)\npub fn id(customer: Customer) -&gt; CustomerId\npub fn rename(customer: Customer, new_name: String) -&gt; Result(Customer, CustomerError)\npub fn change_email(customer: Customer, new_email: Email) -&gt; Customer\npub fn same_customer(a: Customer, b: Customer) -&gt; Bool\nRules:\n\nCustomerId is its own opaque type; never use raw strings as IDs in domain code.\nReject empty names and empty ID strings.\nrename and change_email return a new Customer with the same ID.\nsame_customer compares by ID only.\n\nThe tests in test/customer_test.gleam are the spec. The file ships empty, so cases land as the implementation lands.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>04. Kata 3: Entities (`Customer`)</span>"
+    ]
+  },
+  {
+    "objectID": "04_kata_customer.html#hints",
+    "href": "04_kata_customer.html#hints",
+    "title": "04. Kata 3: Entities (Customer)",
+    "section": "Hints",
+    "text": "Hints\n\nTreat this as Kata 1 applied twice. CustomerId is an opaque value object with its own smart constructor, new_id, and Customer is an opaque entity whose new takes value objects that already carry their proofs.\nchange_email returns Customer rather than Result because its one substantive argument, new_email, already carries Email’s proof, so nothing remains to fail on. The value-object layer pays out.\nrename does return Result, because new_name: String is raw input that can still be empty. Route it through new so the empty-name check lives in one place.\nFor same_customer, plain == on CustomerId is the right tool. CustomerId is opaque and only constructable through new_id, so every CustomerId in your program already cleared the constructor, and opacity buys you trustworthy equality.\nSkip the extra fields (created_at, version, address, whatever else is tempting). The kata wants the entity-vs-value distinction; everything else is noise.\nThe strict new takes values that already carry their proofs, so don’t let raw strings through. Raw input belongs in a separate boundary factory that pipelines the three smart constructors together; see use.md. Splitting the two keeps each function honest about what it can fail on.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>04. Kata 3: Entities (`Customer`)</span>"
+    ]
+  },
+  {
+    "objectID": "04_kata_customer.html#walk-through",
+    "href": "04_kata_customer.html#walk-through",
+    "title": "04. Kata 3: Entities (Customer)",
+    "section": "Walk-through",
+    "text": "Walk-through\nFunnel rename through new, same instinct as Money. The function writes no validation of its own and hands off to the smart constructor, which already checks the name, so the invariant lives in one place.\nEmail arrives carrying its proof, so the entity layer skips the string check; the type already establishes the invariant. Compounding like this earns value objects their keystrokes.\nsame_customer carries the other half. After a rename, alice_v1 == alice_v2 returns False because the structs differ, yet domain-wise they name one person, and a named function makes the caller commit to identity equality instead of stumbling into structural equality by reflex. CustomerId stays opaque and only new_id builds one, so a.id == b.id is safe; both IDs went through the constructor.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>04. Kata 3: Entities (`Customer`)</span>"
+    ]
+  },
+  {
+    "objectID": "04_kata_customer.html#critique",
+    "href": "04_kata_customer.html#critique",
+    "title": "04. Kata 3: Entities (Customer)",
+    "section": "Critique",
+    "text": "Critique\n\nstring.length(raw) == 0 works, but string.is_empty(raw) is cheaper (no traversal) and reads as the intent. new_id above uses is_empty while new still uses length; pick one.\nnew(... name: \"   \") succeeds as written, because whitespace-only names pass the check. Whether that counts as a bug depends on the domain, and every spot a string enters your domain is a place for invariants to leak.\nThe strict new is good design that grates when you genuinely have raw input from an HTTP handler. Add a separate from_raw boundary factory that chains the three smart constructors in a use-chain; use.md §4 has the worked example.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>04. Kata 3: Entities (`Customer`)</span>"
+    ]
+  },
+  {
+    "objectID": "04_kata_customer.html#takeaway",
+    "href": "04_kata_customer.html#takeaway",
+    "title": "04. Kata 3: Entities (Customer)",
+    "section": "Takeaway",
+    "text": "Takeaway\nYou have a Customer whose attributes drift while its identity stays fixed and trusted. rename and change_email are state transitions. Each produces a new immutable value, the next moment in that customer’s life.\nAn event-sourced system would emit a CustomerRenamed or EmailChanged event on each transition, and replaying them would reconstruct the customer’s history. Your design already fits that mold without trying; Kata 5 turns the theory into working code.",
+    "crumbs": [
+      "<span class='chapter-number'>5</span>  <span class='chapter-title'>04. Kata 3: Entities (`Customer`)</span>"
+    ]
+  },
+  {
+    "objectID": "05_kata_order.html",
+    "href": "05_kata_order.html",
+    "title": "05. Kata 4: Aggregates (Order)",
+    "section": "",
+    "text": "Concept\nAn aggregate clusters related objects into a unit. The aggregate root is the only entry point; everything outside goes through it. The root enforces invariants that span multiple internal pieces.\nAn Order has OrderLines. Rules like “an order must have at least one line to be placed” or “every line must share a currency” are properties of the aggregate, which no individual line can enforce on its own, so OrderLine stays internal, and Order is the only thing the outside world touches.\nGleam’s module system starts pulling its weight here. A module is the natural unit for an aggregate, and the module seals anything not marked pub.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>05. Kata 4: Aggregates (`Order`)</span>"
+    ]
+  },
+  {
+    "objectID": "05_kata_order.html#new-gleam-fundamentals",
+    "href": "05_kata_order.html#new-gleam-fundamentals",
+    "title": "05. Kata 4: Aggregates (Order)",
+    "section": "New Gleam fundamentals",
+    "text": "New Gleam fundamentals\n\nInternal types (no pub)\nA type without pub is private to its module:\ntype OrderLine {\n  OrderLine(sku: String, quantity: Int, unit_price: Money)\n}\nOutside the module, OrderLine does not exist as a name. Order exposes operations that manipulate lines internally, and nothing outside can construct or hold one. The type system enforces the rule against reaching into the aggregate.\n\n\nMultiple guards in sequence\nuse &lt;- carried one guard in Kata 2. Aggregate invariants stack several:\npub fn add_line(order, sku, quantity, unit_price) {\n  use &lt;- no_modify_placed(order)\n  use &lt;- non_empty_sku(sku)\n  use &lt;- positive_qty(quantity)\n  use &lt;- currency_matches(order.lines, unit_price)\n  // ... do the work\n}\nEach line names one precondition, and the body reads top-to-bottom like a spec.\n\n\nlist.try_map and list.try_fold\nFor aggregating over a list when each step can fail:\n\nlist.try_map(list, f) runs f on each element and short-circuits on the first Error. Returns Result(List(b), e).\nlist.try_fold(list, init, f) folds with a fallible combining function and short-circuits the same way.\n\norder.total uses both: multiply each line’s price by its quantity, then sum the results. Either stage can fail.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>05. Kata 4: Aggregates (`Order`)</span>"
+    ]
+  },
+  {
+    "objectID": "05_kata_order.html#task",
+    "href": "05_kata_order.html#task",
+    "title": "05. Kata 4: Aggregates (Order)",
+    "section": "Task",
+    "text": "Task\nCreate src/order.gleam exposing:\nimport customer.{type CustomerId}\nimport money.{type Money}\n\npub opaque type OrderId {\n  OrderId(value: String)\n}\n\n// Internal. Outside this module, this type does not exist.\ntype OrderLine {\n  OrderLine(sku: String, quantity: Int, unit_price: Money)\n}\n\npub type OrderStatus {\n  Draft\n  Placed\n}\n\npub opaque type Order {\n  Order(\n    id: OrderId,\n    customer_id: CustomerId,\n    lines: List(OrderLine),\n    status: OrderStatus,\n  )\n}\n\npub type OrderError {\n  EmptyOrderId\n  EmptySku\n  NonPositiveQuantity\n  CannotModifyPlacedOrder\n  CannotPlaceEmptyOrder\n  CurrencyMismatch\n  InvalidOrderTotal\n}\n\npub fn new_id(raw: String) -&gt; Result(OrderId, OrderError)\npub fn new(id: OrderId, customer_id: CustomerId) -&gt; Order\npub fn add_line(order: Order, sku: String, quantity: Int, unit_price: Money) -&gt; Result(Order, OrderError)\npub fn place(order: Order) -&gt; Result(Order, OrderError)\npub fn total(order: Order) -&gt; Result(Money, OrderError)\nAggregate invariants, the reason the type exists:\n\nadd_line rejects empty SKUs and non-positive quantities.\nadd_line fails with CannotModifyPlacedOrder if status is Placed.\nadd_line fails with CurrencyMismatch when the new line’s currency differs from existing lines.\nplace fails with CannotPlaceEmptyOrder if there are no lines.\nplace transitions Draft → Placed.\nplace fails with CannotModifyPlacedOrder on an already-placed order.\ntotal sums all line totals, and fails on an empty order or any underlying money error.\n\nThe tests in test/order_test.gleam are the spec.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>05. Kata 4: Aggregates (`Order`)</span>"
+    ]
+  },
+  {
+    "objectID": "05_kata_order.html#hints-what-to-do",
+    "href": "05_kata_order.html#hints-what-to-do",
+    "title": "05. Kata 4: Aggregates (Order)",
+    "section": "Hints: what to do",
+    "text": "Hints: what to do\n\nStart with the naive version. add_line is one big nested case. Get it green, then carve out the helpers. The duplication is the signal.\nEach invariant becomes a guard helper: no_modify_placed, non_empty_sku, positive_qty, currency_matches. Each takes a callback (then: fn() -&gt; Result(...)) and returns Error(SpecificReason) when the rule is violated, otherwise delegating to the callback.\nApply them via use &lt;-, stacked in add_line, so the body becomes “run the rules, then do the one record update.”\nState checks come before arg validation. A caller passing (\"\", -3, ...) against a placed order sees CannotModifyPlacedOrder first, since Placed already locks the order out of further modification.\nReuse no_modify_placed in place. “Re-place a placed order” and “modify a placed order” violate the same invariant, so the helper names a domain rule that applies wherever it fits.\nOrder(..order, lines: [new_line, ..order.lines]) is record update plus list cons. Without record update, changing one field forces retyping every field of Order; with it, only the change shows.\ntotal works in two stages:\n\nline-by-line, multiply unit_price * quantity with list.try_map (each multiply can fail);\nsum the per-line totals with list.try_fold, starting from money.zero(first.unit_price) (each money.add can fail). Both stages return Result(_, money.MoneyError); translation to OrderError uses result.map_error.\n\nnew does not return Result. A brand-new draft order with no lines is always valid, so place enforces “an empty order cannot be placed.” Constructors stay honest about what they validate.\n\nIf add_line runs longer than ~10 lines after the refactor, something has gone wrong.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>05. Kata 4: Aggregates (`Order`)</span>"
+    ]
+  },
+  {
+    "objectID": "05_kata_order.html#walk-through",
+    "href": "05_kata_order.html#walk-through",
+    "title": "05. Kata 4: Aggregates (Order)",
+    "section": "Walk-through",
+    "text": "Walk-through\nadd_line resolves into a short stack of preconditions with one line of real work underneath. Each use &lt;- names a domain rule, and the mutation is a record update at the bottom. Aggregate code reads like a flat list of invariants followed by the transition.\nOrder of preconditions matters. State checks (no_modify_placed) come before arg validation (non_empty_sku, positive_qty), so a caller passing (\"\", -3, ...) against a placed order deserves CannotModifyPlacedOrder ahead of EmptySku. Placed locks out further modification, and the rest is moot.\nplace reuses no_modify_placed because “re-place a placed order” and “modify a placed order” violate the same invariant. The helper names a domain rule that applies wherever it fits.\nOrder(..order, lines: [new_line, ..order.lines]) is record update plus list cons. Without record update, changing one field forces relisting every field of Order; with it, only the change shows.\ntotal uses try_map then try_fold: map each line to its line total with money.multiply, then fold those with money.add. Both stages short-circuit on the first failure.\nThe case order.lines wrapper around total covers two cases:\n\nA non-empty order matches [first, ..], which supplies a valid currency to seed money.zero.\nAn empty order has no meaningful total, so Error(InvalidOrderTotal) is the honest answer.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>05. Kata 4: Aggregates (`Order`)</span>"
+    ]
+  },
+  {
+    "objectID": "05_kata_order.html#critique",
+    "href": "05_kata_order.html#critique",
+    "title": "05. Kata 4: Aggregates (Order)",
+    "section": "Critique",
+    "text": "Critique\nCollapsing money.MoneyError to InvalidOrderTotal flattens the diagnostic, so an underlying overflow and a currency mismatch from the money layer look identical to the caller. Two options:\n\n\ndefine richer OrderError variants (OrderCurrencyMismatch, OrderOverflow) and translate explicitly;\n\n\nwrap the underlying error as TotalCalculationFailed(money.MoneyError).\n\n\nThe book recommends (b). It preserves the cause without exploding the error vocabulary, and it keeps the layering honest: OrderError doesn’t have to know what failure modes Money will grow next month. Option (a) is the right choice only when the outer layer needs to react differently per cause (different HTTP status codes, different retry policies); when callers just want to log the cause, wrapping is cheaper and ages better.\nOrderLine is fully internal, with no pub and no opaque. The original spec said pub opaque type OrderLine, which also provides opacity. Private-only is cleaner because it signals that nothing outside should even name the type. Whether external code ever needs to talk about an OrderLine (say, as a return type) decides between the two; in this aggregate, it does not.\nnew_id does not trim, so new_id(\"   \") succeeds with a whitespace ID. That is a bug; the fix mirrors customer.new_id.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>05. Kata 4: Aggregates (`Order`)</span>"
+    ]
+  },
+  {
+    "objectID": "05_kata_order.html#takeaway",
+    "href": "05_kata_order.html#takeaway",
+    "title": "05. Kata 4: Aggregates (Order)",
+    "section": "Takeaway",
+    "text": "Takeaway\nThe Order module is now a boundary. Outside it, OrderLine is not constructible, and no caller can put an order into an inconsistent state. “Currency homogeneity across lines” stops being a concept anyone has to remember, because the only door in enforces it.\nWhen DDD writers say “the aggregate is a consistency boundary,” they mean the module. Every operation either succeeds with a fully-valid new state or fails with a typed error explaining why.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>05. Kata 4: Aggregates (`Order`)</span>"
+    ]
+  },
+  {
+    "objectID": "05_kata_order.html#whats-next",
+    "href": "05_kata_order.html#whats-next",
+    "title": "05. Kata 4: Aggregates (Order)",
+    "section": "What’s next",
+    "text": "What’s next\nKata 5 takes on domain events: state transitions that also report what happened. add_line and place will return the new Order along with a list of facts (LineAdded, OrderPlaced) that other parts of the system can react to without the aggregate knowing about them.\nThe existing toolkit carries straight through: opacity, smart constructors, use &lt;- chains, record update. Events add to the aggregate’s return type; nothing needs redesigning.",
+    "crumbs": [
+      "<span class='chapter-number'>6</span>  <span class='chapter-title'>05. Kata 4: Aggregates (`Order`)</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html",
+    "href": "06_kata_events.html",
+    "title": "06. Kata 5: Domain Events",
+    "section": "",
+    "text": "Concept\nUntil now, every operation on the aggregate returned the new state. From here on, each one also returns a list of facts about what just happened. Those facts, domain events, are immutable past-tense records carrying enough data to describe the transition on their own.\nWhat you get for the extra return value:\nOrderPlaced names a fact in the past tense, where PlaceOrder would name a command in the present, a request rather than a record. Mix the two and you lose the ability to reason about your system. Commands and events are duals, a point the bonus section returns to.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html#concept",
+    "href": "06_kata_events.html#concept",
+    "title": "06. Kata 5: Domain Events",
+    "section": "",
+    "text": "Other parts of the system can react without the aggregate knowing they exist. Send a confirmation email when OrderPlaced fires; Order doesn’t need to know email exists.\nThe event stream is the audit log, with no separate “what happened to this order” code path.\nOnce the aggregate emits a complete event log per state change, you can derive state by replaying events instead of storing it. That’s the foundation CQRS and event sourcing build on.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html#new-gleam-fundamentals",
+    "href": "06_kata_events.html#new-gleam-fundamentals",
+    "title": "06. Kata 5: Domain Events",
+    "section": "New Gleam fundamentals",
+    "text": "New Gleam fundamentals\nThe kata mostly widens the return shape, so the toolkit is what you already know from earlier chapters.\n\nTuples: #(a, b)\nGleam’s lightweight pair / triple syntax:\nlet pair = #(order, [OrderCreated(id, cid)])\nlet #(o, events) = pair\nThe pair bundles new state with the events from this transition without a named record per operation.\nPattern matching on tuples works the same as anywhere else:\ncase order.add_line(o, sku, q, p) {\n  Ok(#(new_order, events)) -&gt; todo\n  Error(reason)            -&gt; todo\n}\n\n\nresult.try chaining (earning its keep)\nYou met result.try in Kata 3, and place is where it earns its keep. The OrderPlaced event carries the total, computing that total can fail, and place has to thread the preconditions, the total, and the event into one chain.\npub fn place(order: Order) -&gt; Result(#(Order, List(OrderEvent)), OrderError) {\n  use &lt;- no_modify_placed(order)\n  case order.lines {\n    [] -&gt; Error(CannotPlaceEmptyOrder)\n    _  -&gt; {\n      use t &lt;- result.try(total(order))\n      let placed = Order(..order, status: Placed)\n      Ok(#(placed, [OrderPlaced(order.id, t)]))\n    }\n  }\n}\nThat use t &lt;- result.try(total(order)) line is what use was designed for. If total returns Error, the chain stops there; otherwise t binds and execution continues. Without it you’d nest a case inside another case.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html#task",
+    "href": "06_kata_events.html#task",
+    "title": "06. Kata 5: Domain Events",
+    "section": "Task",
+    "text": "Task\nModify src/order.gleam so new, add_line, and place return both the updated aggregate and the events emitted:\npub type OrderEvent {\n  OrderCreated(order_id: OrderId, customer_id: CustomerId)\n  LineAdded(order_id: OrderId, sku: String, quantity: Int, unit_price: Money)\n  OrderPlaced(order_id: OrderId, total: Money)\n}\n\npub fn new(id: OrderId, customer_id: CustomerId) -&gt; #(Order, List(OrderEvent))\n\npub fn add_line(\n  order: Order,\n  sku: String,\n  quantity: Int,\n  unit_price: Money,\n) -&gt; Result(#(Order, List(OrderEvent)), OrderError)\n\npub fn place(order: Order) -&gt; Result(#(Order, List(OrderEvent)), OrderError)\nRules:\n\nnew emits [OrderCreated(...)] and is total (no Result wrapper).\nadd_line emits [LineAdded(...)] on success.\nplace emits [OrderPlaced(...)] on success, with the total computed at placement time.\nA failed operation isn’t a fact, so the Error(...) branch returns the error by itself and never builds a partial event list.\n\ntest/order_test.gleam holds the per-operation spec, and test/order_scenarios_test.gleam exercises the aggregate through sequences of commands (see “Scenario testing” below).",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html#hints-what-to-do",
+    "href": "06_kata_events.html#hints-what-to-do",
+    "title": "06. Kata 5: Domain Events",
+    "section": "Hints: what to do",
+    "text": "Hints: what to do\n\nImplement in this order: new_id → new → guard helpers → add_line → total → place. place depends on total, so total comes first.\nnew is now the simplest function in the file. Build the order, attach the OrderCreated event, and return the tuple; no Result wrapper and no precondition guards.\nEvent construction lives on the Ok branch only. When a precondition guard returns Error(...), the use &lt;- chain short-circuits and you never reach the line that builds the event list.\nplace is the interesting one. Sketch:\n\nGuard the placed status\nCheck that lines isn’t empty (else CannotPlaceEmptyOrder)\nCompute the total via result.try (else propagate the underlying error)\nConstruct the placed order plus its OrderPlaced event\n\nDon’t share event-construction code across operations. Each event has a different shape, so build each one inline at the emission site; it’s a handful of lines per operation.\nThe kata 4 helpers carry over untouched: no_modify_placed, non_empty_sku, positive_qty, and currency_matches keep their signatures and bodies. They short-circuit before you build anything.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html#walk-through",
+    "href": "06_kata_events.html#walk-through",
+    "title": "06. Kata 5: Domain Events",
+    "section": "Walk-through",
+    "text": "Walk-through\nnew is total: a tuple of the new draft order and an event list with one OrderCreated. add_line builds its event in the Ok branch only, since the use &lt;- guards short-circuit on failure and a failure isn’t a fact.\nplace is the chapter’s showpiece (the code block in “result.try chaining” above): a zero-arg use &lt;- for the status guard, a case for the empty-lines guard, and a use t &lt;- result.try for the fallible total. Three failure layers stack independently; the placed-order record and its event come together only after every layer passes.\ntotal is pub because callers want to display a running total before placing, and the scenario tests assert on expected totals. Exposing it doesn’t break the aggregate boundary, since it’s a pure read.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html#scenario-testing-commands-as-data",
+    "href": "06_kata_events.html#scenario-testing-commands-as-data",
+    "title": "06. Kata 5: Domain Events",
+    "section": "Scenario testing: commands as data",
+    "text": "Scenario testing: commands as data\nOnce the aggregate has multiple operations that chain together, per-operation tests start looking the same:\n\nbuild empty order → add line → add line → place → assert.\n\nThat’s a lot of ceremony per assertion. The cleaner pattern lifts the inputs to data, runs them through a tiny engine, and lets the tests read as declarative scenarios.\nThe full file lives at test/order_scenarios_test.gleam; the core is about fifteen lines.\npub type OrderCommand {\n  AddLine(sku: String, quantity: Int, unit_price: money.Money)\n  Place\n}\n\npub fn run(\n  initial: order.Order,\n  cmds: List(OrderCommand),\n) -&gt; Result(#(order.Order, List(order.OrderEvent)), order.OrderError) {\n  list.try_fold(cmds, #(initial, []), apply_one)\n}\n\nfn apply_one(state, cmd) {\n  let #(o, events_so_far) = state\n  let step = case cmd {\n    AddLine(sku, q, price) -&gt; order.add_line(o, sku, q, price)\n    Place -&gt; order.place(o)\n  }\n  use #(o2, new_events) &lt;- result.try(step)\n  Ok(#(o2, list.append(events_so_far, new_events)))\n}\nlist.try_fold walks the command list, threading (order, events) through each step. The first failure short-circuits the fold and bubbles out as Error(...), while successful runs accumulate events in order.\nTests then read like specifications.\npub fn two_lines_then_place_emits_correct_events_test() {\n  let oid = test_order_id()\n  let cmds = [\n    AddLine(\"WIDGET\", 2, usd(50)),\n    AddLine(\"GADGET\", 1, usd(100)),\n    Place,\n  ]\n  let assert Ok(#(_, events)) = run(empty_draft_order(), cmds)\n  assert events == [\n    order.LineAdded(oid, \"WIDGET\", 2, usd(50)),\n    order.LineAdded(oid, \"GADGET\", 1, usd(100)),\n    order.OrderPlaced(oid, usd(200)),\n  ]\n}\n\npub fn add_line_after_place_fails_test() {\n  let cmds = [\n    AddLine(\"WIDGET\", 1, usd(50)),\n    Place,\n    AddLine(\"GADGET\", 1, usd(50)),  // fails because order is placed\n  ]\n  assert run(empty_draft_order(), cmds)\n    == Error(order.CannotModifyPlacedOrder)\n}\nEach scenario is one let cmds = [...] followed by one assertion, where the command sequence carries the meaning and the assertion locks it in. Fifty of these read in two minutes and you know exactly what the aggregate does.\nThe pattern scales because the set of failure scenarios is finite and easy to enumerate; once they all pass, you trust the aggregate’s behavior rather than just its per-operation correctness.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html#takeaway",
+    "href": "06_kata_events.html#takeaway",
+    "title": "06. Kata 5: Domain Events",
+    "section": "Takeaway",
+    "text": "Takeaway\nThe aggregate-as-pure-function trajectory reaches its natural endpoint:\n\naggregate × command → Result(#(new_aggregate, events), error)\n\nThat signature is the central abstraction every CQRS and event-sourcing framework reaches for, written here without a framework in about a hundred lines of Gleam, with the type system enforcing every invariant.\nA richer system wouldn’t return events to the caller. It would publish to a bus and let other bounded contexts subscribe, so Order stays unaware that Shipping exists yet shipping still happens because shipping listens for OrderPlaced. That decoupling earns events their place as a first-class concept.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html#bonus-commands-as-a-first-class-concept",
+    "href": "06_kata_events.html#bonus-commands-as-a-first-class-concept",
+    "title": "06. Kata 5: Domain Events",
+    "section": "Bonus: commands as a first-class concept",
+    "text": "Bonus: commands as a first-class concept\nOrderCommand lives in test code rather than in the domain. That was deliberate; this kata is about events. In a fully event-sourced system, commands graduate to the domain:\n// commands flow in from the boundary (HTTP, message queue, etc.)\n// events flow out to the bus\npub fn handle(\n  state: Order,\n  cmd: OrderCommand,\n) -&gt; Result(#(Order, List(OrderEvent)), OrderError) {\n  case cmd {\n    AddLine(...) -&gt; add_line(state, ...)\n    Place -&gt; place(state)\n  }\n}\nThat function is the aggregate’s API; everything else is detail. CQRS frameworks like Axon, EventFlow, and akka-persistence-typed sit on this signature.\nThe kata doesn’t need that abstraction yet, but the scenario engine you just wrote is the test-time twin of the production command handler, the same pattern wearing a different label.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "06_kata_events.html#whats-next",
+    "href": "06_kata_events.html#whats-next",
+    "title": "06. Kata 5: Domain Events",
+    "section": "What’s next",
+    "text": "What’s next\nKata 6: Repositories. The aggregate has been a pure function so far; the next chapter introduces persistence. A use case will load an Order from storage, call place, save the result, and publish the events, and the domain code never learns what storage is.\nThat’s where the layering from 00_introduction.md starts earning its keep.",
+    "crumbs": [
+      "<span class='chapter-number'>7</span>  <span class='chapter-title'>06. Kata 5: Domain Events</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html",
+    "href": "07_kata_repositories.html",
+    "title": "07. Kata 6: Repositories",
+    "section": "",
+    "text": "Concept\nThe aggregate has stayed pure. State and a command go in, a new state and events come out. That work is worth nothing once the process restarts.\nA repository turns an aggregate type into something you can load and save. The domain depends on the interface and the implementation lives in the infrastructure layer, so order.gleam stays ignorant of storage.\nUse cases then test without infrastructure. A test places an order through the repo, loads it back, and checks the events. Storage stays pluggable on the other side, so you swap an in-memory dict today for Postgres next week, and the use-case code on top doesn’t notice.\nA repository belongs to an aggregate, not an entity. You save an Order and an OrderLine rides along inside it. The aggregate is the consistency unit, and the repo’s contract is “give me back a valid one or fail.”",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html#what-you-load-is-what-you-trust",
+    "href": "07_kata_repositories.html#what-you-load-is-what-you-trust",
+    "title": "07. Kata 6: Repositories",
+    "section": "What you load is what you trust",
+    "text": "What you load is what you trust\nThe repository’s other job is to feed loaded data back through the smart constructors. A database row is raw fields, and turning those into a typed Order goes through email.new, customer.new_id, and friends, the same validation that keeps HTTP input honest. A corrupt row becomes Error(CorruptRow(...)) rather than a thrown exception.\nThe Kata 1 ceremony compounds here. Every reconstruction trusts the type because every construction went through the smart constructor. No “but I got it from the database, so I trust it” backdoor exists.",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html#the-use-case-is-the-orchestrator",
+    "href": "07_kata_repositories.html#the-use-case-is-the-orchestrator",
+    "title": "07. Kata 6: Repositories",
+    "section": "The use case is the orchestrator",
+    "text": "The use case is the orchestrator\nA use case is a function that does one thing the application supports, like “place an order.” The shape is:\nload via repo → call domain → save via repo → return events\nEvery step has a typed error. The use case wraps repo errors and domain errors in a PlaceOrderError so callers know which layer broke, which is where the chaining patterns from earlier katas come together: result.try from Kata 3 and the wrap-the-cause idea from Kata 5.\nThe use case is the application boundary that HTTP, CLI, and message handlers translate into and out of. The domain sits beneath it. A test of a use case says “given these inputs, this is what happens” without spinning up any infrastructure.",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html#new-gleam-fundamentals",
+    "href": "07_kata_repositories.html#new-gleam-fundamentals",
+    "title": "07. Kata 6: Repositories",
+    "section": "New Gleam fundamentals",
+    "text": "New Gleam fundamentals\n\nRecords of functions\nA Gleam record whose fields happen to be functions is still an ordinary record, and that record serves as an interface:\npub type OrderRepo {\n  OrderRepo(\n    find: fn(OrderId) -&gt; Result(Order, RepoError),\n    save: fn(Order) -&gt; Result(Nil, RepoError),\n  )\n}\nA Customer and an OrderRepo are the same kind of value. The fields differ and callers don’t care:\nlet order = repo.find(id)\nA type with function fields is the interface, without an IFooRepository&lt;Order&gt; or a DI container in sight.\n\n\nWhy we need OTP\nGleam has no globals or mutable fields. State that needs to survive across function calls has to live somewhere, and that somewhere is a process.\nA process is a lightweight Erlang thread with a mailbox. You send messages and it handles them one at a time. The state is a value the process threads through its message loop, and outside the process you see replies rather than the state itself.\nFor a repository, the process holds a Dict(OrderId, Order) and the messages ask “find this id” or “save this order.”\n\n\nOTP, just enough\nThe vocabulary stays compact.\n\nDict(k, v) from gleam/dict, an immutable hash map. dict.new(), dict.get(d, k) -&gt; Result(v, Nil), dict.insert(d, k, v) -&gt; Dict(k, v).\nSubject(msg), a typed mailbox, the address of a process. Hold a Subject(Find(...) | Save(...)) to send messages to a particular actor.\nactor.new(initial_state) |&gt; actor.on_message(handler) |&gt; actor.start builds and starts the actor. Returns Result(Started(Subject(msg)), StartError). The Started.data field is the subject outside callers use.\nThe handler signature is fn(state, msg) -&gt; actor.Next(state, msg). Return actor.continue(new_state) to loop, or actor.stop() to terminate.\nprocess.call(subject, timeout, builder) does synchronous request/reply. The builder has type fn(reply_subject) -&gt; msg. You embed a reply subject in the outgoing message, the actor sends its response there, and process.call blocks until that response arrives or the timeout expires.\n\nA counter actor builds the same shape:\ntype Msg {\n  Get(reply: Subject(Int))\n  Set(value: Int, reply: Subject(Nil))\n}\n\nfn handle(state: Int, msg: Msg) -&gt; actor.Next(Int, Msg) {\n  case msg {\n    Get(reply) -&gt; {\n      process.send(reply, state)\n      actor.continue(state)\n    }\n    Set(value, reply) -&gt; {\n      process.send(reply, Nil)\n      actor.continue(value)\n    }\n  }\n}\nSwap Dict(OrderId, Order) for Int and swap Find/Save for Get/Set, and you have a repository.\n\n\nWrapping the actor in the interface\nThe actor’s Subject(Msg) is an implementation detail. The use case sees an OrderRepo. Closures bridge the two:\npub fn in_memory() -&gt; Result(OrderRepo, actor.StartError) {\n  use started &lt;- result.try(\n    actor.new(dict.new())\n    |&gt; actor.on_message(handle_msg)\n    |&gt; actor.start,\n  )\n  let pid = started.data\n  Ok(OrderRepo(\n    find: fn(id) { process.call(pid, 100, fn(reply) { Find(id, reply) }) },\n    save: fn(o)  { process.call(pid, 100, fn(reply) { Save(o, reply) }) },\n  ))\n}\nEach function field closes over the actor’s subject. Callers never know the actor exists.\n\n\nError wrapping across layers\nWhen two layers can fail, the error type names the layer:\npub type PlaceOrderError {\n  RepoFailed(RepoError)\n  DomainFailed(OrderError)\n}\nThe conversion happens via result.map_error, which relies on a Gleam fact that’s easy to miss: constructors are functions. When you write pub type PlaceOrderError { RepoFailed(RepoError) | ... }, RepoFailed does double duty. It works as a pattern in a case expression to destructure (case e { RepoFailed(inner) -&gt; ... }), and it also works as a value of type fn(RepoError) -&gt; PlaceOrderError that fits anywhere a function does.\nresult.map_error has signature fn(Result(a, e1), fn(e1) -&gt; e2) -&gt; Result(a, e2). Given a Result and a function from the old error type to the new one, it applies that function on the Error branch and returns a Result whose error type is whatever the function returned.\nPass RepoFailed (a function fn(RepoError) -&gt; PlaceOrderError) and the result’s error type becomes PlaceOrderError:\nlet r1: Result(Order, RepoError)        = repo.find(id)\nlet r2: Result(Order, PlaceOrderError)  = r1 |&gt; result.map_error(RepoFailed)\n//                                    RepoFailed is the function ^\nThe original RepoError survives inside the RepoFailed wrapper, so the cause is intact, and callers pattern-match on RepoFailed(_) versus DomainFailed(_) to see which side broke.\nresult.try only chains when the inner Result and the outer function’s return type share an error type. Drop the map_error and the repo gives you Result(_, RepoError) while the outer function returns Result(_, PlaceOrderError), so the types refuse to line up. map_error(RepoFailed) makes the chain type-check.",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html#task",
+    "href": "07_kata_repositories.html#task",
+    "title": "07. Kata 6: Repositories",
+    "section": "Task",
+    "text": "Task\nAdd an accessor to src/order.gleam so the repo can extract the ID from an order to use as a dict key:\npub fn id(order: Order) -&gt; OrderId {\n  order.id\n}\nCreate src/order_repo.gleam exposing:\npub type RepoError {\n  NotFound\n  // add more if you discover them\n}\n\npub type OrderRepo {\n  OrderRepo(\n    find: fn(OrderId) -&gt; Result(Order, RepoError),\n    save: fn(Order) -&gt; Result(Nil, RepoError),\n  )\n}\n\npub fn in_memory() -&gt; Result(OrderRepo, actor.StartError) {\n  todo\n}\nCreate src/place_order.gleam exposing:\npub type PlaceOrderError {\n  RepoFailed(RepoError)\n  DomainFailed(OrderError)\n}\n\npub fn run(\n  repo: OrderRepo,\n  id: OrderId,\n) -&gt; Result(#(Order, List(OrderEvent)), PlaceOrderError) {\n  todo\n}\nWire in_memory to an actor that holds a Dict(OrderId, Order). The actor handles Find and Save messages, and the use case loads, places, and saves.\nTests go in test/order_repo_test.gleam (round-trip the repo) and test/place_order_test.gleam (run the use case end-to-end against an in-memory repo).",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html#hints-what-to-do",
+    "href": "07_kata_repositories.html#hints-what-to-do",
+    "title": "07. Kata 6: Repositories",
+    "section": "Hints: what to do",
+    "text": "Hints: what to do\n\nDesign the OrderRepo type before you write any code. find and save are the minimum; add delete or list_for_customer when a test asks for them and skip them until then.\nRepoError is the next type to pin down. NotFound is obvious. Beyond that, StorageError(reason) covers network or disk failures and CorruptRow(reason) covers “I have a row but cannot reconstruct an Order.” Keep the type compact and grow it as you go.\nhandle_msg is the only real implementation work in order_repo. Match on Find(id, reply) or Save(o, reply), run the matching dict op, send the answer with process.send(reply, ...), then return actor.continue(new_state). Each branch runs about five lines.\nPut the actor’s state type in the handler signature: fn handle_msg(state: Dict(OrderId, Order), msg: Msg) -&gt; actor.Next(Dict(OrderId, Order), Msg). The signature is verbose, and the compiler keeps you honest.\nplace_order.run chains these steps:\n\nuse order &lt;- result.try(repo.find(id) |&gt; result.map_error(RepoFailed))\nuse #(placed, events) &lt;- result.try(order.place(order) |&gt; result.map_error(DomainFailed))\nuse _ &lt;- result.try(repo.save(placed) |&gt; result.map_error(RepoFailed))\nOk(#(placed, events))\n\nFor tests, write a helper that creates a repo and seeds it with an order. Most tests then set up state, call the use case, and assert against the events.\nprocess.call blocks the calling process until the actor replies or times out. 100ms is plenty for tests.\nresult.replace_error(NotFound) is the cleanest way to turn the Result(Order, Nil) from dict.get into a Result(Order, RepoError).",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html#walk-through",
+    "href": "07_kata_repositories.html#walk-through",
+    "title": "07. Kata 6: Repositories",
+    "section": "Walk-through",
+    "text": "Walk-through\nThe actor’s message type does the design work. Each request becomes a variant, and each variant carries a typed reply Subject so the actor knows where to send the answer:\npub type Msg {\n  Find(id: OrderId, reply_to: Subject(Result(Order, RepoError)))\n  Save(order: Order, reply_to: Subject(Result(Nil, RepoError)))\n}\nThe reply types differ by message. The compiler refuses to let Find ever reply with Nil or Save with an Order, so the wiring stays honest without runtime checks.\nhandle_msg is then small:\nfn handle_msg(store, msg) {\n  case msg {\n    Find(id:, reply_to:) -&gt; {\n      let r = store |&gt; dict.get(id) |&gt; result.replace_error(NotFound)\n      process.send(reply_to, r)\n      actor.continue(store)\n    }\n    Save(order:, reply_to:) -&gt; {\n      let new_state = dict.insert(store, order.id(order), order)\n      process.send(reply_to, Ok(Nil))\n      actor.continue(new_state)\n    }\n  }\n}\nresult.replace_error(NotFound) swaps the Nil from dict.get for the repo’s vocabulary in one call, since the missing-key case carries no detail worth preserving.\nin_memory starts the actor and bridges its subject into the OrderRepo record, so callers see two function fields and never learn an actor exists:\npub fn in_memory() -&gt; Result(OrderRepo, actor.StartError) {\n  use started &lt;- result.try(\n    actor.new(dict.new())\n    |&gt; actor.on_message(handle_msg)\n    |&gt; actor.start,\n  )\n  let pid = started.data\n  Ok(OrderRepo(\n    find: fn(id) { process.call(pid, 100, fn(reply) { Find(id, reply) }) },\n    save: fn(o)  { process.call(pid, 100, fn(reply) { Save(o, reply) }) },\n  ))\n}\nThe fn(reply) { Find(id, reply) } shape is process.call’s contract: it hands you a fresh reply subject, you embed it in the outgoing message, and process.call blocks until the actor sends a response there or 100ms passes.\nplace_order.run is the payoff:\npub fn run(repo, id) {\n  use order &lt;- result.try(repo.find(id) |&gt; result.map_error(RepoFailed))\n  use #(placed, events) &lt;- result.try(\n    order.place(order) |&gt; result.map_error(DomainFailed),\n  )\n  use _ &lt;- result.try(repo.save(placed) |&gt; result.map_error(RepoFailed))\n  Ok(#(placed, events))\n}\nThree result.try lines, each wrapping the layer-specific error in a PlaceOrderError variant. The function reads top-to-bottom like a checklist: load, transition, save, return. Nothing here knows the repo is an actor or that the actor holds a Dict, so swapping in a SQLite repo (kata 9) doesn’t move a line.\nThe map_error(RepoFailed) calls do the type-juggling the “constructors as functions” detour set up. Without them the inner Result(_, RepoError) wouldn’t fit a chain expecting Result(_, PlaceOrderError).",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html#critique",
+    "href": "07_kata_repositories.html#critique",
+    "title": "07. Kata 6: Repositories",
+    "section": "Critique",
+    "text": "Critique\nThe 100ms timeout fits an in-memory dict and nothing else. A real I/O repo would take the timeout as config, since “long enough for the slow case, short enough that hung backends don’t pile up callers” is a deployment decision rather than a code one.\nThe actor itself is a teaching scaffold. It serializes every request through one mailbox, which a Dict needs and a SQL connection pool already provides. A SQLite or Postgres repo drops the actor entirely; the in-memory dict has nowhere else to live, so it borrows one.\nStorageError(String) is a placeholder. A real repo distinguishes “connection lost,” “constraint violated,” and “decode failed” because callers want to react differently. Grow the variant set as the production adapter forces the cases.\nlist_all is pub only because integration tests want to read everything back. Production repos almost never expose it directly, since returning the whole table is an outage waiting to happen. Filtered or paginated queries earn the field; an unbounded list doesn’t.\norder.id(order) is the one accessor that crosses the aggregate’s opaque-type wall for the repo’s benefit, and it’s the right size: the repo needs a key to store under, and an explicit accessor is cheaper than exposing the record. Kata 9 extends the same idea (snapshot/restore) when the repo needs the full state.",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html#takeaway",
+    "href": "07_kata_repositories.html#takeaway",
+    "title": "07. Kata 6: Repositories",
+    "section": "Takeaway",
+    "text": "Takeaway\nThe aggregate stayed pure. order.place still takes an Order and returns Result(#(Order, List(OrderEvent)), OrderError), the same signature it had after kata 5. Nothing in order.gleam learned that storage exists.\nWhat the repository bought, in one chapter: a use case that takes an interface and swaps adapters in kata 9 without moving, tests that build a fresh in-memory backend per case without mocks, and layer errors that stay distinct all the way to the HTTP boundary where RepoFailed(NotFound) becomes a 404 and DomainFailed(CannotPlaceEmptyOrder) becomes a 422.\nThe use case is the application layer the rest of the book builds on. HTTP handlers (kata 8) translate requests into use-case calls; bounded contexts (kata 7) react to the events use cases return. Its signature reads like a sentence about what the application does.",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "07_kata_repositories.html#whats-next",
+    "href": "07_kata_repositories.html#whats-next",
+    "title": "07. Kata 6: Repositories",
+    "section": "What’s next",
+    "text": "What’s next\nKata 7 introduces a second bounded context, Shipping, that reacts to Ordering’s events without either side importing the other’s internals. The repository pattern from this chapter carries straight through: ShipmentRepo is the same record-of-functions on the same actor scaffold, with the message type adapted to shipping’s queries.",
+    "crumbs": [
+      "<span class='chapter-number'>8</span>  <span class='chapter-title'>07. Kata 6: Repositories</span>"
+    ]
+  },
+  {
+    "objectID": "08_kata_bounded_contexts.html",
+    "href": "08_kata_bounded_contexts.html",
+    "title": "08. Kata 7: Bounded Contexts",
+    "section": "",
+    "text": "Concept\nSo far you’ve worked inside one bounded context, Ordering, with Order as the aggregate, place_order as the use case, and OrderRepo as the repo. Everything in src/ belongs to that context.\nReal systems grow more. Warehouse ships the placed orders while Marketing segments customers by lifetime value and Finance reconciles payments. Each team owns its own data and vocabulary, and moves at its own pace.\nEach becomes its own bounded context with its own model. They share concepts (a customer in Ordering is the same human as a customer in Marketing), but the data each context holds about that customer diverges. Force them into one type and the model dies fast:\n“Customer in Ordering” and “Customer in Marketing” are different concepts that happen to share an ID. Each gets its own type and its own storage, and they talk through events.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>08. Kata 7: Bounded Contexts</span>"
+    ]
+  },
+  {
+    "objectID": "08_kata_bounded_contexts.html#concept",
+    "href": "08_kata_bounded_contexts.html#concept",
+    "title": "08. Kata 7: Bounded Contexts",
+    "section": "",
+    "text": "A Customer type with name, email, segment, ltv, last_campaign, default_address, loyalty_tier, risk_flags…\nChanges ripple through every team, reads pull fields nobody on this team cares about, and migrations turn into multi-team negotiations.\nThe privacy story collapses the moment Marketing’s PII fields end up in Ordering’s fixtures.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>08. Kata 7: Bounded Contexts</span>"
+    ]
+  },
+  {
+    "objectID": "08_kata_bounded_contexts.html#the-thesis-kata-7-demonstrates",
+    "href": "08_kata_bounded_contexts.html#the-thesis-kata-7-demonstrates",
+    "title": "08. Kata 7: Bounded Contexts",
+    "section": "The thesis kata 7 demonstrates",
+    "text": "The thesis kata 7 demonstrates\n\nOrdering doesn’t know Shipping exists.\nShipping reacts to Ordering’s events. Ordering just emits them.\n\nEvents do the integration work, and neither context shares a type with the other.\nIn code, src/shipping/* imports order.OrderEvent and order.OrderId, while src/order.gleam imports nothing from shipping/. Grep proves the asymmetry.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>08. Kata 7: Bounded Contexts</span>"
+    ]
+  },
+  {
+    "objectID": "08_kata_bounded_contexts.html#new-gleam-fundamentals",
+    "href": "08_kata_bounded_contexts.html#new-gleam-fundamentals",
+    "title": "08. Kata 7: Bounded Contexts",
+    "section": "New Gleam fundamentals",
+    "text": "New Gleam fundamentals\nKata 7 is about organization, so the new machinery is minimal.\n\nFolders as namespace boundaries\nGleam’s module system is filesystem-driven. src/shipping/shipment.gleam exports a module called shipping/shipment. Other code imports it as:\nimport shipping/shipment.{type Shipment}\nThe folder is the namespace. Living inside shipping/ is what makes a file part of the Shipping bounded context, and no other ceremony applies.\n\n\nType aliases for function types\nTo name a function type, say the event handler signature, Gleam lets you write:\npub type OrderEventHandler =\n  fn(order.OrderEvent) -&gt; Result(Nil, ShipmentError)\nNow handler: OrderEventHandler stands in for the long signature. The alias is optional and worth it only when it clarifies the calling code.\nThat’s the new mechanics. The rest is patterns you already use: opaque types, smart constructors, records of functions, modules.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>08. Kata 7: Bounded Contexts</span>"
+    ]
+  },
+  {
+    "objectID": "08_kata_bounded_contexts.html#task-one-file-per-step",
+    "href": "08_kata_bounded_contexts.html#task-one-file-per-step",
+    "title": "08. Kata 7: Bounded Contexts",
+    "section": "Task: one file per step",
+    "text": "Task: one file per step\nCreate five new files. Each does one job, and reading the kata top-down matches reading the files in order.\n\n1. src/shipping/shipment.gleam: the Shipping aggregate\npub opaque type ShipmentId {\n  ShipmentId(value: String)\n}\n\npub type ShipmentStatus {\n  Pending\n  Shipped\n  Delivered\n}\n\npub opaque type Shipment {\n  Shipment(\n    id: ShipmentId,\n    order_id: order.OrderId,\n    status: ShipmentStatus,\n  )\n}\n\npub type ShipmentError {\n  EmptyShipmentId\n  CannotShipNonPending\n  CannotDeliverNonShipped\n}\n\npub fn new_id(raw: String) -&gt; Result(ShipmentId, ShipmentError)\npub fn new(id: ShipmentId, order_id: order.OrderId) -&gt; Shipment\npub fn id(s: Shipment) -&gt; ShipmentId\npub fn order_id(s: Shipment) -&gt; order.OrderId\npub fn mark_shipped(s: Shipment) -&gt; Result(Shipment, ShipmentError)\npub fn mark_delivered(s: Shipment) -&gt; Result(Shipment, ShipmentError)\nThe shape mirrors Order. This kata skips events because kata 7 focuses on the cross-context flow, and kata 5 already covered how aggregates emit events.\n\n\n2. src/shipping/shipment_repo.gleam: the Shipping repository\npub type RepoError {\n  NotFound\n}\n\npub type ShipmentRepo {\n  ShipmentRepo(\n    find: fn(ShipmentId) -&gt; Result(Shipment, RepoError),\n    save: fn(Shipment) -&gt; Result(Nil, RepoError),\n    find_by_order: fn(order.OrderId) -&gt; Result(Shipment, RepoError),\n  )\n}\n\npub fn in_memory() -&gt; Result(ShipmentRepo, actor.StartError)\nThe shape mirrors OrderRepo and adds one new find_by_order query, because the use case asks “did this order already produce a shipment?”, which is a lookup by order_id rather than by shipment_id. Repos expose what their callers need.\n\n\n3. src/shipping/handle_order_placed.gleam: the cross-context handler\npub type HandleError {\n  RepoFailed(shipment_repo.RepoError)\n  ShipmentFailed(shipment.ShipmentError)\n  AlreadyShipped\n}\n\npub fn run(\n  repo: ShipmentRepo,\n  fresh_id: ShipmentId,\n  event: order.OrderEvent,\n) -&gt; Result(Nil, HandleError)\nThe handler inspects the event and acts only on OrderPlaced. It asks the repo whether a shipment already exists for this order, since the bus can replay events and the handler has to stay idempotent. If none exists, it builds a fresh Shipment via shipment.new and saves it through repo.save.\nThis module imports order types (OrderEvent, OrderId) along with shipping/shipment and shipping/shipment_repo. It’s the one place where Ordering and Shipping meet.\n\n\n4. test/shipping/shipment_test.gleam: Shipping aggregate tests\nStandard aggregate tests cover construction, the happy-path transitions, and the error branches when the status is wrong.\n\n\n5. test/shipping/handle_order_placed_test.gleam: the integration spec\nOne test proves the cross-context flow works:\npub fn order_placed_creates_shipment_test() {\n  let assert Ok(order_repo) = order_repo.in_memory()\n  let assert Ok(ship_repo) = shipment_repo.in_memory()\n\n  // Place an order via Ordering\n  let oid = test_order_id()\n  let #(o, _) = order.new(oid, test_customer_id())\n  let assert Ok(#(o2, _)) = order.add_line(o, \"WIDGET\", 1, usd(100))\n  let assert Ok(_) = order_repo.save(o2)\n  let assert Ok(#(_, events)) = place_order.run(order_repo, oid)\n\n  // Dispatch the events to Shipping\n  let assert [order_placed] = events\n  let assert Ok(sid) = shipment.new_id(\"SHIP-001\")\n  let assert Ok(Nil) = handle_order_placed.run(ship_repo, sid, order_placed)\n\n  // Shipment exists\n  let assert Ok(s) = ship_repo.find_by_order(oid)\n  assert shipment.order_id(s) == oid\n}\nThe test runs a full vertical slice of two contexts collaborating, and no module here imports anything from shipping/ into order or the reverse.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>08. Kata 7: Bounded Contexts</span>"
+    ]
+  },
+  {
+    "objectID": "08_kata_bounded_contexts.html#hints-what-to-do",
+    "href": "08_kata_bounded_contexts.html#hints-what-to-do",
+    "title": "08. Kata 7: Bounded Contexts",
+    "section": "Hints: what to do",
+    "text": "Hints: what to do\n\nBuild in the order listed: aggregate first (no dependencies), repo next (depends on the aggregate and the actor scaffold), handler last (pulls in the aggregate, the repo, and Ordering’s OrderEvent).\nShipment looks like Order with the hard parts removed. There are no lines or totals, just an ID, an OrderId acting as a foreign key, and a status enum. State transitions check the current status.\nshipment_repo.in_memory() mirrors order_repo.in_memory() on the same actor scaffold; the message type grows one variant to support FindByOrder.\nMake the handler idempotent. Pattern-match the event. Anything that isn’t OrderPlaced returns Ok(Nil) and bails. For OrderPlaced, call find_by_order first, because if a shipment already exists you return Ok(Nil) (or Error(AlreadyShipped), your call). Only save when nothing’s there.\nPass the ShipmentId in from outside. Generating IDs inside the handler makes it nondeterministic and harder to test, so let the composition root or the test supply a fresh one.\nImports tell the story. When you finish, check:\n\nsrc/shipping/handle_order_placed.gleam should import order.{type OrderEvent, OrderPlaced, type OrderId}\nsrc/order.gleam should have zero imports starting with shipping/\nIf you have to import the wrong direction, the design is upside down.\n\nFor mark_shipped / mark_delivered: case s.status { Pending -&gt; Ok(Shipment(..s, status: Shipped)) ; _ -&gt; Error(CannotShipNonPending) }, which is the same pattern you used in Order.place.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>08. Kata 7: Bounded Contexts</span>"
+    ]
+  },
+  {
+    "objectID": "08_kata_bounded_contexts.html#walk-through",
+    "href": "08_kata_bounded_contexts.html#walk-through",
+    "title": "08. Kata 7: Bounded Contexts",
+    "section": "Walk-through",
+    "text": "Walk-through\nThe directory structure is the bounded context. There’s no Context type and no BoundedContext annotation declaring boundaries in a config file. You have src/shipping/, and the folder is the boundary. Grep and dependency-graph tools see the boundary without further input.\nhandle_order_placed is the only file with both worlds in scope. Its imports tell the integration story:\nimport order.{type OrderEvent, OrderPlaced}     // ← Ordering's published events\nimport shipping/shipment.{type ShipmentId}       // ← Shipping's own types\nimport shipping/shipment_repo.{type ShipmentRepo, NotFound}\nThe module sits inside the Shipping context (path: shipping/) but translates events from Ordering. This file names the cross-context relationship in code, in one place. Move it and the relationship moves with it.\nNothing touches Ordering. src/order.gleam gains no new imports and no new methods or callbacks. Ordering keeps emitting OrderPlaced events; whether anyone’s listening is none of its business. Delete the shipping/ directory and src/order.gleam still compiles and works.\nThe test asserts the integration without testing the bus. No event bus type appears. The test calls place_order.run, takes the events back, and hands them to the Shipping handler. Those two lines are the bus. A fancier one with async delivery, multiple subscribers, or retry on failure is a separate project, and the kata works fine without it.\nThe find_by_order check before saving makes the handler safe to replay. Real event delivery is at-least-once, and handlers that aren’t idempotent end up creating duplicates, so putting the check in the handler buys idempotency at the application layer for free.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>08. Kata 7: Bounded Contexts</span>"
+    ]
+  },
+  {
+    "objectID": "08_kata_bounded_contexts.html#critique",
+    "href": "08_kata_bounded_contexts.html#critique",
+    "title": "08. Kata 7: Bounded Contexts",
+    "section": "Critique",
+    "text": "Critique\nWhere do money and email live? Both contexts use them, so there are a couple of honest answers:\n\nShared kernel (current setup): they sit at the top level (src/email.gleam, src/money.gleam) and both contexts import them. Good call when the value objects are small, stable, and behave the same wherever they go.\nDuplicate: each context defines its own. Good call when contexts evolve at different rates or need different behavior on the same concept (Marketing might tack tax_jurisdiction onto its money type for compliance).\n\nA kata sticks with the shared kernel. A real system duplicates as soon as you feel the pull.\nThe kata ships without an anti-corruption layer. The handler imports order.OrderEvent directly, so if Ordering’s event vocabulary changes the handler breaks at compile time. That’s a feature when both contexts share a team who can fix both sides in one PR, and a bug when the teams are independent. In the independent case, add a tiny adapter:\n// src/shipping/order_event_adapter.gleam\npub type ShippingTrigger {\n  TriggerForOrder(OrderId)  // shipping's own vocabulary\n}\n\npub fn from_order_event(e: order.OrderEvent) -&gt; Option(ShippingTrigger) {\n  case e {\n    OrderPlaced(id, _) -&gt; Some(TriggerForOrder(id))\n    _ -&gt; None\n  }\n}\nNow handle_order_placed deals only in ShippingTrigger. Ordering can rename, add, or remove event variants and only order_event_adapter.gleam updates. That’s an Anti-Corruption Layer in eight lines, and you should add it once you need it, not before.\nThere’s no real event bus. The “bus” is the composition root iterating events and calling handlers, which suits one process with synchronous handlers and runs out of room when async delivery, persistent retry, or dead-letter queues come up. The fix is a real broker (RabbitMQ, NATS, Kafka, BEAM distribution); application code doesn’t move, only the wiring.\nShipment doesn’t emit events of its own. Adding ShipmentShipped would feed tracking and Finance reconciliation, but the kata skips it to keep the focus on cross-context flow instead of redoing kata 5.\nProcess managers and sagas are also out of scope. Coordinating OrderPlaced → CreateShipment → ChargeCard → ConfirmShipment across contexts is a saga’s job; the pattern here is one idempotent handler per event, with no orchestration on top.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>08. Kata 7: Bounded Contexts</span>"
+    ]
+  },
+  {
+    "objectID": "08_kata_bounded_contexts.html#takeaway",
+    "href": "08_kata_bounded_contexts.html#takeaway",
+    "title": "08. Kata 7: Bounded Contexts",
+    "section": "Takeaway",
+    "text": "Takeaway\nTwo bounded contexts now live in one process, communicating via events along an asymmetric dependency arrow the file tree makes visible. One file (the handler) names both contexts and is idempotent; a test exercises the cross-context flow with no mocks. Adding Marketing means src/marketing/; adding Finance means src/finance/. The shape repeats.\nThe lessons compound. The boundary lives in the dependency graph rather than in documentation, since comments and team agreements drift while imports don’t. Events are the integration contract, named and versioned, and changing one is a public API change while changing a domain type is a private refactor. “Same word, different model” is the right answer: contexts share IDs, not data. A Shipping service in another datacenter is the same code with a different transport, which is why monoliths and microservices with bounded contexts swap more easily than the marketing language suggests.",
+    "crumbs": [
+      "<span class='chapter-number'>9</span>  <span class='chapter-title'>08. Kata 7: Bounded Contexts</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html",
+    "href": "09_kata_http_boundary.html",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "",
+    "text": "Concept\nThe functional core is done: pure aggregates, smart constructors, events as data. The application layer sits on top: repositories and use cases that orchestrate them. What’s left is the shell, which takes input from outside (HTTP, say) and turns the result back into a response.\nThis kata wires up:\nThe shell translates; the core decides. Decisions live in pure functions you’ve already written (order.place, place_order.run), and the shell parses strings into typed values (path → OrderId), routes requests to use-case calls, and translates typed results into status codes and bodies.\nA business rule in the handler means you’ve drifted out of the shell and back into the core, and the rule belongs further down.",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html#concept",
+    "href": "09_kata_http_boundary.html#concept",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "",
+    "text": "A composition root (src/main.gleam), the one file that knows how to construct concrete adapters and assemble them into a running app.\nAn HTTP boundary, a thin handler that turns requests into use-case calls, then turns the typed result into a status code and JSON body.\nThe DI pattern in working code, a Deps record built once at startup and handed to the request handler through closure capture.",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html#why-this-is-the-fcis-payoff-chapter",
+    "href": "09_kata_http_boundary.html#why-this-is-the-fcis-payoff-chapter",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "Why this is the FCIS payoff chapter",
+    "text": "Why this is the FCIS payoff chapter\nFunctional core / imperative shell is a slogan until you see the shell in code. Your place_order.run signature looks like this:\npub fn run(repo, id) -&gt; Result(#(Order, List(OrderEvent)), PlaceOrderError)\nThat signature is complete. The handler doesn’t need to know anything beyond “call this, get one of these shapes back, translate”:\ncase place_order.run(repo, id) {\n  Ok(_)                                          -&gt; 200 OK\n  Error(RepoFailed(NotFound))                    -&gt; 404 Not Found\n  Error(DomainFailed(CannotPlaceEmptyOrder))     -&gt; 422 Unprocessable\n  Error(DomainFailed(CannotModifyPlacedOrder))   -&gt; 409 Conflict\n  Error(_)                                       -&gt; 500 Internal Server Error\n}\nEvery variant the use case can return becomes one HTTP response, and the handler does nothing else. The compiler enforces exhaustiveness: add a new variant to PlaceOrderError, forget the HTTP mapping, and the build breaks at the case instead of silently returning 500 in production.\nTypes-as-proof at the boundary stops the shell from quietly ignoring a failure mode the core cares about.",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html#new-gleam-fundamentals",
+    "href": "09_kata_http_boundary.html#new-gleam-fundamentals",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "New Gleam fundamentals",
+    "text": "New Gleam fundamentals\n\nWisp: the HTTP framework\nWisp is the standard Gleam web framework. The shape you’ll lean on:\nimport wisp.{type Request, type Response}\n\n// A handler is just a function:\nfn handle(req: Request) -&gt; Response { ... }\n\n// Routing: pattern-match on path segments and method\ncase wisp.path_segments(req), req.method {\n  [\"orders\", id, \"place\"], http.Post -&gt; ...\n  _, _ -&gt; wisp.not_found()\n}\nResponse constructors come in two flavours: named helpers for the common codes (wisp.ok(), wisp.not_found(), wisp.bad_request(...), wisp.unprocessable_content(), wisp.internal_server_error()) and wisp.response(status) for any code that doesn’t have one (wisp.response(409) for Conflict, for example). JSON bodies go through wisp.json_response(json, status).\nThe exact set of named helpers drifts between Wisp versions, so the Wisp docs are the source of truth; this chapter pins down only the ones the kata uses.\n\n\nMist: the underlying HTTP server\nWisp doesn’t speak HTTP itself; it delegates to Mist. The wiring at the top of main:\nimport mist\nimport wisp/wisp_mist\n\npub fn main() {\n  let secret = wisp.random_string(64)  // session signing key\n  let assert Ok(_) =\n    wisp_mist.handler(handle_request, secret)\n    |&gt; mist.new\n    |&gt; mist.port(8080)\n    |&gt; mist.start\n  process.sleep_forever()\n}\nExact function names drift between Mist versions, so the docs are the source of truth.\n\n\nWisp/simulate: testing in-process\nYou don’t need a running server to test handlers. wisp/simulate builds request values and feeds them through your handler function:\nimport wisp/simulate\n\nlet req = simulate.request(http.Post, \"/orders/ORDER-001/place\")\nlet response = handle_request(req)\nassert response.status == 200\nThe shell is testable because handlers are functions from request to response, with impurity tucked inside the Deps closure and the in-memory repo giving you deterministic state.\n\n\nThe Deps closure pattern (DI in chill mode)\nThe handler needs the repository, and the repository can’t be a global because each test wants its own clean copy. So composition time assembles the handler from the deps:\npub fn router(deps: Deps) -&gt; fn(Request) -&gt; Response {\n  fn(req) {\n    case wisp.path_segments(req), req.method {\n      [\"orders\", id, \"place\"], http.Post -&gt;\n        place_order_handler.run(deps, id)\n      _, _ -&gt; wisp.not_found()\n    }\n  }\n}\nrouter returns a function that closes over deps, and Mist serves that function. Each test builds different deps and gets a different router, with the closure acting as the container.",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html#task",
+    "href": "09_kata_http_boundary.html#task",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "Task",
+    "text": "Task\nAdd wisp and mist as dependencies:\ngleam add wisp mist\nCreate the source files and tests below.\n\n1. src/main.gleam: the composition root\npub fn main() -&gt; Nil\nResponsibilities:\n\nConstruct the in-memory OrderRepo (and anything else the app needs).\nBundle into a Deps record.\nBuild the router from Deps.\nStart Mist on a port.\n\nOnly this file knows the concrete adapters. Below it the use case takes an interface, never the concrete type.\n\n\n2. src/web/router.gleam: request to response dispatcher\npub type Deps {\n  Deps(order_repo: OrderRepo)\n}\n\npub fn handle(deps: Deps, req: Request) -&gt; Response\nPattern-match path segments and method; dispatch to handlers; return wisp.not_found() for unmatched routes.\n\n\n3. src/web/place_order_handler.gleam: the one HTTP handler\npub fn run(deps: Deps, raw_id: String) -&gt; Response\nSteps inside run:\n\nParse raw_id → OrderId via order.new_id. On failure, wisp.bad_request.\nCall place_order.run(deps.order_repo, order_id).\nPattern-match the result. Translate every variant to an HTTP response.\n\n\n\n4. test/web/place_order_handler_test.gleam\nUse wisp/simulate to drive the handler in-process. Test cases:\n\n200 on a successful placement (seed a placeable order, hit the endpoint, assert status + body)\n400 on a malformed OrderId (e.g. empty path segment if your routing allows it)\n404 when the order doesn’t exist (RepoFailed(NotFound))\n422 on CannotPlaceEmptyOrder\n409 on CannotModifyPlacedOrder\n\n\n\nEndpoint contract\nPOST /orders/:id/place\n\n200 OK              { \"order_id\": \"...\", \"total\": \"...\", \"events\": [...] }\n400 Bad Request     bad order id format\n404 Not Found       order not in repo\n409 Conflict        order already placed\n422 Unprocessable   domain rule violation (empty order, etc.)\n500 Server Error    unexpected",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html#hints-what-to-do",
+    "href": "09_kata_http_boundary.html#hints-what-to-do",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "Hints: what to do",
+    "text": "Hints: what to do\n\nBuild the Deps record first. It’s one field now (order_repo). Growing it later costs nothing for anything that already takes Deps, the DI-bag pattern from the chill-DI conversation.\nThe handler is a translation layer. Doing logic in there beyond “call use case, map result to HTTP” means you should push that logic into the use case. The shell decides response shapes, never business outcomes.\nExhaustive case saves you. Match on Result(_, PlaceOrderError) and the compiler refuses to let you forget a variant. A wildcard _ belongs at the end for unmodeled storage failures (500), not as a substitute for handling a known error.\nClosure capture for DI. The router takes Deps and returns fn(Request) -&gt; Response. Mist serves the returned function. Each test builds its own Deps and gets its own handler, so there’s nothing to share or tear down.\nFor the JSON body, use gleam_json (gleam add gleam_json). Build the body as json.object([...]), encode to a string, pass to wisp.json_response(body, 200).\nTests don’t need Mist. wisp/simulate.request(method, path) builds a request value; pass it to your handler directly and assert on the response. The handler is a function; call it like one.\nmain.gleam ends with process.sleep_forever(). Mist runs in a supervised process, so without something to keep main alive, the OS exits immediately.",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html#walk-through",
+    "href": "09_kata_http_boundary.html#walk-through",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "Walk-through",
+    "text": "Walk-through\nThe composition root:\nlet assert Ok(repo) = order_repo.in_memory()\nlet deps = Deps(order_repo: repo)\nlet handle = router.handle(deps, _)  // closes over deps\nThe third line uses Gleam’s _ placeholder for the request. router.handle takes (deps, req); Mist wants fn(req). The _ builds a closure that bakes in deps and leaves req open, the same capture trick you wrote in order_repo with Save(order, _).\nThe handler’s case-on-result is the table from the kata description:\ncase place_order.run(deps.order_repo, oid) {\n  Ok(#(_, events))                               -&gt; { /* 200 + JSON */ }\n  Error(RepoFailed(NotFound))                    -&gt; wisp.not_found()\n  Error(DomainFailed(CannotPlaceEmptyOrder))     -&gt; wisp.unprocessable_content()\n  Error(DomainFailed(CannotModifyPlacedOrder))   -&gt; wisp.response(409)\n  Error(DomainFailed(_))                         -&gt; wisp.unprocessable_content()\n  Error(RepoFailed(_))                           -&gt; wisp.internal_server_error()\n}\nEach domain failure maps to the most informative HTTP code:\n\n\n\n\n\n\n\n\nDomain error\nHTTP\nWhy\n\n\n\n\nCannotPlaceEmptyOrder\n422\nThe request was syntactically OK, but the resource state forbids the action\n\n\nCannotModifyPlacedOrder\n409\nThe action conflicts with the resource’s current state\n\n\nOther domain errors\n422\nCatch-all for “rules violated”\n\n\nRepoFailed(NotFound)\n404\nNo such resource\n\n\nOther repo errors\n500\nStorage broke; client did nothing wrong\n\n\n\nEvery domain-knowable failure lives in the type system, so the boundary translates each one into something meaningful, and anything unknown falls through to 500. The boundary stays thick at the edges and thin in the middle, translating what it can and deciding nothing.",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html#kicking-the-tires-with-hurl",
+    "href": "09_kata_http_boundary.html#kicking-the-tires-with-hurl",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "Kicking the tires with Hurl",
+    "text": "Kicking the tires with Hurl\nwisp/simulate tests the handler in-process, which is fast and hermetic but doesn’t actually start the server. Once gleam run is listening on :8080, the cleanest way to exercise it from outside is Hurl, a text-file HTTP runner that reads like raw requests with assertions stapled on.\nInstall it once:\nbrew install hurl       # macOS\n# or: cargo install hurl\nThe repo ships a small set of .hurl files under dev/hurl/, one per endpoint plus a flow.hurl that chains create, add lines, place, read, and re-place (asserting 409 on the second placement). Variables live in dev/hurl/vars.env.\nStart the server in one terminal:\ngleam run\nIn another, fire a single request with full output:\nhurl --include --variables-file dev/hurl/vars.env dev/hurl/create.hurl\nOr run the full scenario in --test mode (suppresses request/response bodies, prints pass/fail per file):\nhurl --test \\\n     --variables-file dev/hurl/vars.env \\\n     --variable order_id=ORDER-$(date +%s) \\\n     dev/hurl/flow.hurl\nA fresh order_id per run avoids the second invocation tripping on the placed-state guard from the previous run; restarting the in-memory server has the same effect.\ndev/hurl/errors.hurl walks the 400 / 404 / 422 / 409 branches. When a use-case error variant moves or the handler’s case arm drifts, one of those assertions starts failing before any reader runs into the bug.\nTwo further scripts in the same directory go beyond smoke testing:\n\nworkout.hurl is a full state-machine traversal across four customers (happy path, currency mismatch, empty place, modify after place), with rich jsonpath assertions on order status, line count, and SKU membership.\npool-party.sh fires N copies of flow.hurl in parallel via xargs -P, each with a unique order_id. Every flow runs six sequential requests; if the OTP actor ever interleaves them across order ids, the 409-on-re-place assertion catches it. 200 flows / 32 in flight clears in about a second on a laptop.",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html#critique",
+    "href": "09_kata_http_boundary.html#critique",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "Critique",
+    "text": "Critique\nThe POST puts all inputs in the URL path, so there’s no JSON request body. Real APIs do take them, and a decoder per endpoint translates Result(InputStruct, JsonError) into either a 422 with details or a use-case call. The shape doesn’t change; it’s another translation layer in the shell. Wisp + gleam_json cookbook material covers it.\nAuth, content negotiation, and observability are all absent. Wisp ships middleware for sessions and CSRF; OpenTelemetry packages exist for real instrumentation; an Accept header check dispatches to a different formatter. Each one stacks on top of the boundary without moving it, so the kata leaves them out.\nDeps holds one field, which would normally be a smell. The bag stays because the moment a real app adds a clock, an event_bus, or a customer_repo, it absorbs them without rippling through every signature.\nPersistence is in-memory, so restarts drop every order. Kata 9 swaps in SQLite behind the same OrderRepo interface; nothing above the adapter moves. That substitution is the payoff kata 6 promised, and the chapter on it is where the promise lands in working code.",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "09_kata_http_boundary.html#takeaway",
+    "href": "09_kata_http_boundary.html#takeaway",
+    "title": "09. Kata 8: Composition Root + HTTP Boundary",
+    "section": "Takeaway",
+    "text": "Takeaway\nThe vertical slice runs end to end:\nHTTP Request\n    │\n    ▼\nsrc/main.gleam              ← composition root: builds deps, starts server\n    │\nsrc/web/router.gleam        ← request → handler dispatch\n    │\nsrc/web/place_order_handler.gleam  ← parse, call use case, translate result\n    │\nsrc/place_order.gleam       ← use case: load → place → save\n    │\nsrc/order_repo.gleam        ← in-memory adapter (or Postgres in prod)\n    │\nsrc/order.gleam             ← pure aggregate\nEach layer is independently testable and carries its own type vocabulary. The dependency arrows all point inward, and the composition root is the one file that constructs concrete adapters and hands them down. Hexagonal architecture in working code amounts to a handful of files and a record of values, in place of six packages and an annotation-driven container.",
+    "crumbs": [
+      "<span class='chapter-number'>10</span>  <span class='chapter-title'>09. Kata 8: Composition Root + HTTP Boundary</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html",
+    "href": "10_kata_sqlite_repo.html",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "",
+    "text": "Concept\nOrderRepo keeps find and save as fields on a record so that the implementation can change without touching the use case. The only implementation so far is an in-memory actor, so restart the process and every order vanishes.\nWrite pub fn sqlite(connection) -&gt; OrderRepo against the same OrderRepo interface, backed by a SQLite database. No other file in the system changes. place_order.run keeps calling the same record, and so do the handler and the existing in_memory-based tests.\nThat swap, with no other code aware of it, is the repository pattern in concrete form. If you find yourself touching the use case to make this work, the design drifted somewhere upstream and that’s where the fix belongs.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html#why-sqlite-for-a-learning-project",
+    "href": "10_kata_sqlite_repo.html#why-sqlite-for-a-learning-project",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "Why SQLite for a learning project",
+    "text": "Why SQLite for a learning project\nSQLite needs no daemon and no port, only a file path or :memory: for tests. You write CREATE TABLE, bind parameters, decode rows. The lessons transfer to Postgres with a different library (pog where you’d use sqlight) and the same testing model. Per-test isolation comes from calling sqlight.open(\":memory:\") in the test itself, which removes the fixture-and-rollback dance. File-based storage in production means backups are cp, which suffices for an app with one writer.\nSQLite handles concurrent writers across processes badly. The kata sidesteps the issue; production cannot. One process with many readers and one writer is fine; once you need many writers across processes, reach for Postgres.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html#the-interesting-design-problem",
+    "href": "10_kata_sqlite_repo.html#the-interesting-design-problem",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "The interesting design problem",
+    "text": "The interesting design problem\nOrder is opaque. OrderLine is private to order.gleam, so the type doesn’t exist outside the module. When the SQLite adapter loads a row from the database, it can’t construct an Order from raw fields. There is no public constructor that takes (id, customer_id, lines, status). The adapter has options.\n\nReplay the public API on load, calling order.new(id, cid), then order.add_line(...) per line, then order.place(...) if the status was Placed. The public API emits events (OrderCreated, LineAdded, OrderPlaced), so loading from disk emits fake events as if the actions were happening fresh, which disqualifies the approach.\nPunch a rehydrate back door in order.gleam that the persistence layer uses and application code doesn’t. Add pub type OrderSnapshot { ... } with pub fn snapshot(o) -&gt; OrderSnapshot and pub fn restore(s) -&gt; Order. The snapshot exposes internal state in a controlled public shape without leaking the private types. The repo serializes the snapshot to JSON, stores it, decodes it back, and calls restore.\n\nOption 2 is what every production system using opaque aggregates with state-stored persistence ends up doing. The public API enforces business invariants on transitions; the snapshot/restore pair handles persistence. That separation between transition rules and bytes on disk is the lesson of this kata, with SQL as the vehicle.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html#new-gleam-fundamentals",
+    "href": "10_kata_sqlite_repo.html#new-gleam-fundamentals",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "New Gleam fundamentals",
+    "text": "New Gleam fundamentals\n\nsqlight: SQLite from Gleam\nimport sqlight\n\n// Open\nlet assert Ok(conn) = sqlight.open(\":memory:\")  // or \"file:orders.db\"\n\n// DDL: no params, no result\nlet assert Ok(Nil) = sqlight.exec(\n  \"CREATE TABLE orders (id TEXT PRIMARY KEY, data TEXT NOT NULL)\",\n  on: conn,\n)\n\n// Parameterized query: INSERT/UPDATE/DELETE\nlet assert Ok(_) = sqlight.query(\n  \"INSERT INTO orders (id, data) VALUES (?, ?)\",\n  on: conn,\n  with: [sqlight.text(\"ORDER-001\"), sqlight.text(json_blob)],\n  expecting: decode.success(Nil),\n)\n\n// SELECT with decoder\nlet assert Ok(rows) = sqlight.query(\n  \"SELECT data FROM orders WHERE id = ?\",\n  on: conn,\n  with: [sqlight.text(id_string)],\n  expecting: decode.field(\"data\", decode.string),\n)\nsqlight.text/int/float/bool/blob/null/nullable build parameter values. decode.string/int/field/... from gleam/dynamic/decode builds the row decoder.\nErrors come back as sqlight.SqlightError(code, message, offset). Match on code for specific cases like Constraint or Corrupt.\n\n\ngleam/json: encoding and decoding JSON\nimport gleam/json\n\n// Encode\nlet body = json.object([\n  #(\"id\", json.string(id_str)),\n  #(\"status\", json.string(\"Placed\")),\n  #(\"lines\", json.array(of: json.object, items: line_objects)),\n])\nlet blob = json.to_string(body)  // -&gt; String\n\n// Decode\nimport gleam/dynamic/decode\n\nlet order_decoder = {\n  use id &lt;- decode.field(\"id\", decode.string)\n  use status &lt;- decode.field(\"status\", decode.string)\n  decode.success(#(id, status))\n}\nlet assert Ok(parsed) = json.parse(blob, order_decoder)\nThe decoder type is decode.Decoder(t), built by chaining decode.field calls inside a use block. The hints below walk through what an Order-shaped decoder looks like.\n\nThe LSP writes the boilerplate\nThe Gleam language server ships “Generate to-json function” and “Generate decoder” as code actions. With the cursor on a pub type Foo { ... } line, trigger code actions in your editor (⌘. in VS Code, &lt;space&gt;a in Helix, &lt;leader&gt;ca in most nvim setups) and pick the generator. The LSP writes the encoder or decoder next to the type, populated from the fields it can see, and emits todo placeholders for nested types it hasn’t reached yet. Covering the full Order tree takes several invocations and a styling pass.\n\n\nVisible code is the feature, not the cost\nOther ecosystems hide encoders behind derive macros (#[derive(Serialize)]), annotations (@JsonProperty), or typeclass instances, all generated at compile time or via reflection. Gleam asks you to write the function (or have the LSP write it into your source). A few keystrokes more, paid back in: encoders you can read, grep, and step through; field renames that surface as compile errors instead of silent serialization drift; per-type encoding strategies without decorator soup; and one mechanism whether the bytes go to JSON, MessagePack, log lines, or fixtures.\n\n\n\nThe snapshot/restore back door pattern\nAdd these to src/order.gleam:\n/// A serializable view of an Order's internal state. Public so the\n/// persistence layer can read/write it; not for application code.\npub type OrderSnapshot {\n  OrderSnapshot(\n    id: OrderId,\n    customer_id: CustomerId,\n    lines: List(LineSnapshot),\n    status: OrderStatus,\n  )\n}\n\npub type LineSnapshot {\n  LineSnapshot(sku: String, quantity: Int, unit_price: Money)\n}\n\npub fn snapshot(order: Order) -&gt; OrderSnapshot {\n  OrderSnapshot(\n    id: order.id,\n    customer_id: order.customer_id,\n    lines: list.map(order.lines, fn(l) {\n      LineSnapshot(sku: l.sku, quantity: l.quantity, unit_price: l.unit_price)\n    }),\n    status: order.status,\n  )\n}\n\npub fn restore(snap: OrderSnapshot) -&gt; Order {\n  Order(\n    id: snap.id,\n    customer_id: snap.customer_id,\n    lines: list.map(snap.lines, fn(l) {\n      OrderLine(sku: l.sku, quantity: l.quantity, unit_price: l.unit_price)\n    }),\n    status: snap.status,\n  )\n}\nrestore is total. It assumes the snapshot is valid because the snapshot came from snapshot, which only produces valid snapshots from valid orders. The persistence layer makes sure the bytes round-trip. The domain doesn’t re-validate.\nThe snapshot uses LineSnapshot instead of the private OrderLine. That keeps OrderLine private (no one outside order.gleam can construct one directly) while still giving the persistence layer a stable public shape to work with.\nMoney, OrderStatus, OrderId, and CustomerId are already public, and embed in the snapshot as-is.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html#task",
+    "href": "10_kata_sqlite_repo.html#task",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "Task",
+    "text": "Task\nAdd the dependency:\ngleam add sqlight gleam_json\nThen create one file and edit one:\n\n1. Edit src/order.gleam: add the snapshot back door\nAdd OrderSnapshot, LineSnapshot, pub fn snapshot, and pub fn restore as described above. Around 30 new lines. The existing public API stays unchanged. The snapshot/restore pair is additive.\n\n\n2. Create src/order_repo_sqlite.gleam: the SQLite adapter\npub fn sqlite(conn: Connection) -&gt; Result(OrderRepo, RepoError)\nResponsibilities:\n\nRun schema setup (CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, data TEXT NOT NULL)) on connection.\nBuild closures for find and save.\n\nfind queries by id. If no row, return Error(NotFound). If a row, decode the data JSON into an OrderSnapshot, call order.restore, return Ok(order).\nsave serializes via order.snapshot to JSON and runs INSERT OR REPLACE INTO orders (id, data) VALUES (?, ?). On success it returns Ok(Nil). Map sqlight errors to RepoError.\n\nReturn the OrderRepo record.\n\nAround 60 to 80 lines, including the JSON encode/decode boilerplate.\n\n\n3. Create test/order_repo_sqlite_test.gleam\nSame shape as order_repo_test.gleam from kata 6. Open :memory: per test, build the repo, exercise the find/save round-trip, NotFound, and overwrite. The point is that the same assertions run against a SQLite-backed repo because the interface is the same.\nBonus: a place_order integration test using a SQLite repo. It’s a copy of the existing integration test with the constructor swapped.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html#hints",
+    "href": "10_kata_sqlite_repo.html#hints",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "Hints",
+    "text": "Hints\n\nBuild the schema before the queries. Write the CREATE TABLE and run it. Add a no-op find that always returns NotFound and a no-op save that always succeeds. The actor-shaped flow has to run end to end with the SQLite layer in place before query logic goes on top of a solid scaffold.\nJSON encoding is verbose, and the verbosity is the point. Money becomes {\"amount\": 150, \"currency\": \"USD\"}; Currency and OrderStatus flatten to strings; LineSnapshot becomes an object. The full encoder runs roughly 30 lines of nested json.object calls.\nDecoders mirror encoders. For each json.object([(\"foo\", ...)]) you wrote, there’s a decode.field(\"foo\", ...) you write. Build decoders for Money, Currency, OrderStatus, and LineSnapshot, then compose them into OrderSnapshot.\nUse INSERT OR REPLACE for save. It handles insert-new and update-existing in one statement. The aggregate is the unit of save, so you replace the row.\nEach pub fn ..._test opens its own :memory: connection. Sharing one connection means tests share state, and the suite goes flaky.\nsqlight.nullable(sqlight.text, optional_string) is the binding helper for optional fields. Nothing in the current schema is null, but optional fields land in any real-world extension.\nThe hardest debugging path is silent JSON drift. If snapshot |&gt; encode |&gt; string |&gt; decode |&gt; restore doesn’t round-trip exactly, load-time failures look mysterious. Write a unit test for the round-trip independent of SQLite: encode an order to JSON, decode it back, assert equality. It catches drift before SQL is involved.\npub fn sqlite(conn) takes an already-open connection rather than opening one itself. That keeps the repo testable (:memory: in tests, file connections in main) and lets the composition root own the connection lifecycle.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html#walk-through",
+    "href": "10_kata_sqlite_repo.html#walk-through",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "Walk-through",
+    "text": "Walk-through\nThe schema fits in one table.\nCREATE TABLE IF NOT EXISTS orders (\n  id   TEXT PRIMARY KEY,\n  data TEXT NOT NULL  -- JSON snapshot of OrderSnapshot\n);\nOne row per order holds the serialized snapshot. Saving is INSERT OR REPLACE; finding is SELECT data WHERE id = ?. No joins or transactions yet.\nfind reads the row, decodes the JSON to an OrderSnapshot, and hands it to order.restore. save runs the inverse: order.snapshot, encode to JSON, INSERT OR REPLACE. The id comes from the pub fn id accessor added in kata 6.\nIf decode fails, the row is corrupt. Add CorruptRow(reason: String) to RepoError so callers see something other than a generic decode error.\nThe substitution at the composition root is one line:\n// before\nlet assert Ok(repo) = order_repo.in_memory()\n\n// after\nlet assert Ok(conn) = sqlight.open(\"file:orders.db\")\nlet assert Ok(repo) = order_repo_sqlite.sqlite(conn)\nplace_order.run, the HTTP handler, and the use-case tests keep running unchanged. That swap is the repository pattern’s whole point.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html#critique",
+    "href": "10_kata_sqlite_repo.html#critique",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "Critique",
+    "text": "Critique\nSchema migrations are absent. CREATE TABLE IF NOT EXISTS works for v1. The second version that adds a column needs a migration story: ALTER TABLE, a version table, and so on. Production apps reach for dbmate or sqitch for SQL files. In Gleam you can hand-roll a tracker that records applied migrations in a _migrations table. That work lives outside this kata.\nOptimistic concurrency control is absent too. Two concurrent saves can race, and the second silently overwrites the first. For an actor-writes setup, which the in-memory actor model gives you by construction, that’s fine. For multi-process writes, add a version INT column, check it on update, and fail with a Conflict variant when stale. Postgres and DynamoDB use the same pattern.\nJSON storage is opaque to SQL. You can’t write SELECT * WHERE total &gt; 100 because total lives inside the JSON blob. SQLite’s json_extract lets you query into the JSON, but it’s slow without expression indexes. If you need rich querying, denormalize, splitting into orders and order_lines tables (the schema design covered in the chapter on Shape versus DB storage). The lesson on the rehydration back door doesn’t change.\nStreaming and batch operations stay out of scope. Each extension (find_all, find_by_customer, paginated reads) adds a field to OrderRepo and a closure in the constructor.\nThe connection is a shared resource. SQLite handles one writer. Multiple opens to the same file work, but write-serialization happens at the OS level. For production, wrap the sqlight.Connection in an actor that serializes access, or turn on WAL mode with PRAGMA journal_mode=WAL.\nrestore trusts the snapshot. A bad row could produce an Order whose state violates aggregate invariants. The current restore builds the record directly without re-checking. That’s defensible when the snapshot came from a valid order originally, and risky when a hand-edited row or migration bug slips through. A paranoid restore would re-run invariants, at the cost of going through the public API (re-emitting events) or duplicating validation logic. The project picks one tradeoff and records the choice.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html#takeaway",
+    "href": "10_kata_sqlite_repo.html#takeaway",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "Takeaway",
+    "text": "Takeaway\nKata 6 made the repository pattern plausible because an in-memory adapter worked. This kata makes it load-bearing: SQLite slots in behind the same record of two functions, and the use case, handler, and scenario tests run against either backend unchanged. The domain code never learned what storage looks like because the type system gave it no way to find out, and systems built on that constraint survive a storage migration five years later.\nThe snapshot/restore pair is the right Gleam answer to the serialization boundary. Other languages reach for @JsonSerializable annotations or reflection-based ORMs; Gleam asks you to write the encoder by hand, so when the schema drifts the function to update is the one whose field list no longer matches the type.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "10_kata_sqlite_repo.html#whats-next",
+    "href": "10_kata_sqlite_repo.html#whats-next",
+    "title": "10. Kata 9: SQLite Repository",
+    "section": "What’s next",
+    "text": "What’s next\nThe stack is now production-shape: typed domain, events as facts, repositories as interfaces, bounded contexts, HTTP boundary, composition root, and disk persistence. Everything beyond is specialization.\nThe final chapter steps out of katas and into practice: what experience teaches that the exercises don’t, what to skip, when to escalate, and how to keep the codebase from drifting back into the soup the patterns exist to prevent.",
+    "crumbs": [
+      "<span class='chapter-number'>11</span>  <span class='chapter-title'>10. Kata 9: SQLite Repository</span>"
+    ]
+  },
+  {
+    "objectID": "11_kata_wiring.html",
+    "href": "11_kata_wiring.html",
+    "title": "11. Kata 10: Wiring and Configuration",
+    "section": "",
+    "text": "New Tricks\nKata 9 built and tested the SQLite adapter in isolation. Time to hook it up.\ngleamlang_katas.gleam still says:\nTwo OrderRepos exist now, one in an actor and one over sqlite, so the implementation swaps without touching anything downstream.\nTo test the SQLite wiring, save an order, restart the server, and GET the order back. The OrderRepo choice also becomes configurable from the command line.\nEither via:\nor",
+    "crumbs": [
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>11. Kata 10: Wiring and Configuration</span>"
+    ]
+  },
+  {
+    "objectID": "11_kata_wiring.html#new-tricks",
+    "href": "11_kata_wiring.html#new-tricks",
+    "title": "11. Kata 10: Wiring and Configuration",
+    "section": "",
+    "text": "envoy handles env var access\nimport envoy\n\nenvoy.get(\"MY_ENV_VAR\")  // -&gt; Result(String, Nil)\nenvoy.get returns Ok(String) when the env var has a value, and Error(Nil) when it doesn’t.\n\nEnvironment variables always arrive as strings.\n\nResult-handling composes with it the usual way:\nenvoy.get(\"PORT\")\n|&gt; result.try(int.parse) // it should become an int\n|&gt; result.unwrap(8080) // default value\n\n\nOrganizing the Config\nThe wrong shape:\npub type Bad_Config {\n  Bad_Config(repo_kind: String, db_path: String)\n  //     ^^^^^^^^ stringly typed; needs validation everywhere it's used\n}\nThe right shape:\npub type RepoBackend {\n  InMemory\n  Sqlite(path: String)\n}\n\npub type Config {\n  Config(repo: RepoBackend, port: Int)\n}\nBad_Config is harder to use, since the type system cannot help you set it up correctly. You’d have to scan the code for valid values of repo_kind.\nReading the Config definition explains what it can be, and hints at how callers will use it. The db_path only exists when the variant is Sqlite, so you can’t accidentally read it when the backend is InMemory.\nThis is the cleanest example of “make illegal states unrepresentable” in the whole book. Bad_Config lets (\"in_memory\", \"/some/path.db\") exist as a value even though the path is meaningless without sqlite; the typed RepoBackend makes that pairing un-constructable. The slogan from Kata 1 applied to configuration.\nThe shape mirrors HTTP input parsing. Untyped strings arrive, a parser turns them into typed values, and the typed values flow through the system.\n\nNote: Extending this to connect to postgres adds the connection uri, or the host_name and db name, as fields of a Postgres variant of RepoBackend. Something like:\n\npub type ExtendedRepoBackend {\n  InMemory\n  Sqlite(path: String)\n  PostgresURI(uri: String)\n  PostgresParts(host_name: String, db_name: String, ...)\n}\n\n\nConfig -&gt; Repo\nA config value passes into a function that produces a running adapter.\nfn build_repo(backend: RepoBackend) -&gt; Result(OrderRepo, String) {\n  case backend {\n    InMemory -&gt;\n      order_repo.in_memory()\n      |&gt; result.map_error(string.inspect)\n\n    Sqlite(path) -&gt; {\n      // opening a connection can fail:\n      use conn &lt;- result.try(\n        sqlight.open(path) |&gt; result.map_error(string.inspect)\n      )\n      order_repo_sqlite.sqlite(conn) |&gt; result.map_error(string.inspect)\n    }\n  }\n}\nError types collapse to String here. actor.StartError and sqlight.Error don’t share an ancestor, so the composition root flattens them. string.inspect works at this layer, since the only consumer of the error is a human (or agent) reading the panic message.",
+    "crumbs": [
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>11. Kata 10: Wiring and Configuration</span>"
+    ]
+  },
+  {
+    "objectID": "11_kata_wiring.html#task",
+    "href": "11_kata_wiring.html#task",
+    "title": "11. Kata 10: Wiring and Configuration",
+    "section": "Task",
+    "text": "Task\n\n1. Add the dependency\ngleam add envoy\n\n\n2. Add RepoBackend and Config types\nIn gleamlang_katas.gleam read the config, and turn it into an OrderRepo.\n\n\n3. Implement load_config\n\nEnv vars\nRead ORDER_REPO and ORDER_DB, and PORT into typed values.\n\nOrder Repo\nDefault to InMemory when ORDER_REPO is unset. Crash if the value is set and invalid.\nORDER_DB defaults to \"orders.db\".\n\n\nPort\nDefault Port: 8080. An unparsable value should crash.\n\n\n\n\n4. Implement build_repo\nThe factory given above, but try doing it without looking.\nIts signature is fn(RepoBackend) -&gt; Result(OrderRepo, String)\n\n\n5. Update main\npub fn main() -&gt; Nil {\n  let config = load_config()\n  let assert Ok(repo) = build_repo(config.repo)\n  let deps = router.Deps(order_repo: repo)\n  let handle = router.handle(deps, _)\n  let secret = wisp.random_string(64)\n  let assert Ok(_) =\n    wisp_mist.handler(handle, secret)\n    |&gt; mist.new\n    |&gt; mist.port(config.port)\n    |&gt; mist.start\n  process.sleep_forever()\n}\n\n\n6. Update .gitignore\norders.db\norders.db*\nDon’t commit the database. The glob also covers SQLite’s sidecar files.\n\n\n7. Verify persistence\nThe Hurl scripts from chapter 09 (dev/hurl/) do the round-trip without any per-step kill/restart choreography:\n# 1. start with SQLite, create + read one order\nORDER_REPO=sqlite gleam run &\nhurl --test --variables-file dev/hurl/vars.env dev/hurl/create.hurl\nhurl --test --variables-file dev/hurl/vars.env dev/hurl/get.hurl\nkill %1\n\n# 2. restart, prove the order survived\nORDER_REPO=sqlite gleam run &\nhurl --test --variables-file dev/hurl/vars.env dev/hurl/get.hurl\nkill %1\nIf the second get.hurl passes, the wiring is done. A 404 means something in the save path isn’t writing to disk.\nWithout Hurl, the same shape with curl:\nORDER_REPO=sqlite gleam run &\ncurl -X POST \"http://localhost:8080/orders?order_id=ORDER-001&customer_id=CUST-1\"\ncurl http://localhost:8080/orders/ORDER-001\nkill %1\nInspect the SQLite file directly to confirm bytes landed:\nsqlite3 orders.db 'SELECT id, length(data) FROM orders;'",
+    "crumbs": [
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>11. Kata 10: Wiring and Configuration</span>"
+    ]
+  },
+  {
+    "objectID": "11_kata_wiring.html#hints-what-to-do",
+    "href": "11_kata_wiring.html#hints-what-to-do",
+    "title": "11. Kata 10: Wiring and Configuration",
+    "section": "Hints: what to do",
+    "text": "Hints: what to do\n\nRead env vars at the top of main, once. envoy.get inside a handler or use case means configuration has leaked downward; pull it back to load_config and pass typed values through Deps.\nDefaults live in load_config, not in build_repo. By the time build_repo runs, the backend choice is decided. Splitting parsing from construction keeps each function small.\nThe factory returns Result, not panics. let assert Ok(...) is the caller’s choice. build_repo returns a value so tests can exercise it without crashing the test runner.\nOpen the SQLite connection once at startup, hand it to the repo, and don’t close it. The OS closes it on process exit. (Tests open :memory: per test, as kata 9 established.)\nPick a case convention for ORDER_REPO values (lowercase reads as more shell-friendly) and reject unrecognized values rather than guessing. The Critique section returns to this.",
+    "crumbs": [
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>11. Kata 10: Wiring and Configuration</span>"
+    ]
+  },
+  {
+    "objectID": "11_kata_wiring.html#walk-through",
+    "href": "11_kata_wiring.html#walk-through",
+    "title": "11. Kata 10: Wiring and Configuration",
+    "section": "Walk-through",
+    "text": "Walk-through\nload_config:\nimport envoy\nimport gleam/int\nimport gleam/result\n\nfn load_config() -&gt; Config {\n  let repo = case envoy.get(\"ORDER_REPO\") {\n    Ok(\"sqlite\") -&gt; {\n      let path = envoy.get(\"ORDER_DB\") |&gt; result.unwrap(\"orders.db\")\n      Sqlite(path)\n    }\n    Ok(\"memory\") -&gt; InMemory\n    Error(Nil) -&gt; InMemory       // unset: default\n    Ok(_) -&gt; InMemory            // unrecognized: see critique\n  }\n\n  let port =\n    envoy.get(\"PORT\")\n    |&gt; result.try(int.parse)\n    |&gt; result.unwrap(8080)\n\n  Config(repo: repo, port: port)\n}\nThe function is total, since any environment produces a Config, which keeps main straight-line.\nbuild_repo is the factory from “New Gleam fundamentals.” It’s the one place that turns a typed RepoBackend into a running OrderRepo, with all error paths funneled to Result(_, String).\nmain becomes choreography:\nlet config = load_config()                       // env → typed\nlet assert Ok(repo) = build_repo(config.repo)    // typed → adapter\nlet deps = router.Deps(order_repo: repo)         // adapter → bundle\nlet handle = router.handle(deps, _)              // bundle → handler\n// ... start Mist on config.port ...\nThe boundary between “parse the world” and “do work” sits in the first three lines, and the let assert Ok on line 2 is the only place this file panics on adapter construction.",
+    "crumbs": [
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>11. Kata 10: Wiring and Configuration</span>"
+    ]
+  },
+  {
+    "objectID": "11_kata_wiring.html#critique",
+    "href": "11_kata_wiring.html#critique",
+    "title": "11. Kata 10: Wiring and Configuration",
+    "section": "Critique",
+    "text": "Critique\nEnv vars suit one-process apps and stop scaling past dev/staging/prod with secret rotation. The source then becomes a config file or secrets manager, but the shape of load_config doesn’t change: envoy.get becomes secrets_manager.fetch, and the typed Config flows through unchanged. The typed-config boundary pays back here.\nFile paths aren’t validated up front. Sqlite(\"/no/such/dir/orders.db\") doesn’t fail until sqlight.open runs, which is the right moment for the error to arrive; pre-validation would duplicate the open logic.\nFalling back to InMemory on an unrecognized ORDER_REPO is the worst bug in the kata. A typo (ORDER_REPO=sqlight) yields a fresh in-memory repo on every restart, silently. Production code should log a warning or refuse to start on any non-empty unrecognized value, so that “unset” and “set to garbage” land on different code paths.\nMigrations and concurrency are out of scope. CREATE TABLE IF NOT EXISTS works for v1; the day a version INT column joins, a migration tool becomes necessary. SQLite serializes writes through one connection, which suits one Mist process; heavier load wants WAL mode or an actor that serializes connection access. Both are mechanical additions when they matter.\nThe tests don’t exercise the factory end to end. order_repo_sqlite_test constructs the repo directly, which is right for unit tests; an integration test that sets env vars and asserts the right Config and OrderRepo come out would prove the wiring as the config surface grows.",
+    "crumbs": [
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>11. Kata 10: Wiring and Configuration</span>"
+    ]
+  },
+  {
+    "objectID": "11_kata_wiring.html#takeaway",
+    "href": "11_kata_wiring.html#takeaway",
+    "title": "11. Kata 10: Wiring and Configuration",
+    "section": "Takeaway",
+    "text": "Takeaway\nConfiguration is a boundary like HTTP. Untyped strings arrive at the edge, a parser turns them into typed values, and everything downstream works with the typed form. The HTTP handler does this for request bodies; load_config does it for env vars.\nKeeping the untyped world at the edges earns its keep over time more than the domain model itself or the repository pattern. A Dynamic that leaks past main.gleam is a future bug; a sum type meeting a stringly-typed flag downstream is a future refactor. The in-memory repo from kata 6 was never only a teaching tool, since it runs the test suite and local development. The SQLite repo slots in behind the same interface, and the layers above can’t tell which is which. The composition root is the one file that knows.",
+    "crumbs": [
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>11. Kata 10: Wiring and Configuration</span>"
+    ]
+  },
+  {
+    "objectID": "11_kata_wiring.html#whats-next",
+    "href": "11_kata_wiring.html#whats-next",
+    "title": "11. Kata 10: Wiring and Configuration",
+    "section": "What’s next",
+    "text": "What’s next\nThe next and final chapter, Putting It Into Practice, distills the experience of shipping software with these patterns: what to reach for on Monday morning, what to skip, when to escalate from one pattern to the next, and how to discuss any of it with colleagues who haven’t read the book. The katas teach the patterns; the closing chapter covers application.",
+    "crumbs": [
+      "<span class='chapter-number'>12</span>  <span class='chapter-title'>11. Kata 10: Wiring and Configuration</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html",
+    "href": "12_in_practice.html",
+    "title": "12. Putting It Into Practice",
+    "section": "",
+    "text": "Don’t start with all of it\nThe katas teach the patterns. The harder skill is reading a working codebase and judging which of these tools earns its weight today and which doesn’t, yet or ever. This chapter is opinionated; disagreement is welcome where context differs.\nIf you’re starting a fresh Gleam project tomorrow, do not start with:\nStart with:\nThat foundation covers most of what most apps need.\nThe patterns in this book are answers to specific problems. Apply them once you’ve hit the problem. Introducing them preemptively is how DDD earns its reputation for ceremony.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#dont-start-with-all-of-it",
+    "href": "12_in_practice.html#dont-start-with-all-of-it",
+    "title": "12. Putting It Into Practice",
+    "section": "",
+    "text": "A domain/, application/, infrastructure/ folder split\nAn OrderRepo interface before there’s a second implementation\nAn event bus before something needs to react to a transition\nA composition root with a Deps record before there are multiple deps\nBounded contexts before there are two distinct sub-models\n\n\n\nOne module per concept (order.gleam, customer.gleam)\nSmart constructors that return Result\nFunctions that take and return values\nA flat src/ directory until you feel pressure to split",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#minimum-viable-ddd",
+    "href": "12_in_practice.html#minimum-viable-ddd",
+    "title": "12. Putting It Into Practice",
+    "section": "Minimum viable DDD",
+    "text": "Minimum viable DDD\nFor a small project (under ~10k LoC, one team), here’s what earns its weight:\n\n\n\n\n\n\n\nPattern\nWorth it for…\n\n\n\n\nSmart constructors + Result errors\nevery project, day one\n\n\nOpaque types for domain values\nevery project, day one\n\n\nAggregate root + state-transition methods\nwhen ≥3 mutations cluster around the same fields\n\n\nRepository as record of functions\nwhen you have ≥2 storage backends OR want to test without one\n\n\nDomain events\nwhen something must react without coupling, or you want an audit log\n\n\nBounded contexts as folders\nwhen the model honestly has two sub-models, not just two screens\n\n\nUse cases as named functions\nwhen the app has more than ~5 endpoints\n\n\nComposition root with Deps bag\nwhen you have ≥3 deps that travel together\n\n\nresult.try chains in use cases\nas soon as use cases call multiple fallible things\n\n\nIdempotent event handlers\nas soon as something replays events (which something will)\n\n\nThe HTTP boundary as pure translation\nevery HTTP-served project\n\n\n\nWhen you’re not sure whether a pattern earns its weight, wait. Adding it later, once the pain is real, costs less than carrying scaffolding through six months of nobody needing it, and removing an entrenched abstraction is politically harder than adding the missing one.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#where-bounded-contexts-come-from",
+    "href": "12_in_practice.html#where-bounded-contexts-come-from",
+    "title": "12. Putting It Into Practice",
+    "section": "Where bounded contexts come from",
+    "text": "Where bounded contexts come from\nContexts emerge from use. They show up when team boundaries harden, when two parts of the model start disagreeing about what the same word means, or when a one-line type change drags three people into the same PR. Whiteboard contexts drawn on day one are guesses; lived contexts are evidence.\nYou’ll know it’s time to split when:\n\nThe Customer type has 14 fields and any given function uses 3\nA change to Customer blocks a team that doesn’t care about the field you’re touching\nPeople start writing BillingCustomer = Customer with extra fields workaround types to escape the noise\nA code review for a tiny feature requires sign-off from three teams\n\nThat’s when you reach for the bounded contexts chapter and split.\nThe inverse holds, too. Two contexts that always change together aren’t two contexts. If customer_billing.gleam and customer_marketing.gleam show up in the same PR every time, merge them and stop pretending.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#refactor-moves-as-the-system-grows",
+    "href": "12_in_practice.html#refactor-moves-as-the-system-grows",
+    "title": "12. Putting It Into Practice",
+    "section": "Refactor moves as the system grows",
+    "text": "Refactor moves as the system grows\nThese shape-changes show up in roughly this order, each provoked by its own pain.\n\n“My CRUD endpoints are getting hard to test”\nPull the business logic into a domain function and test that directly. The endpoint becomes a 5-line translator, moving from Rails controller to use case.\n\n\n“I keep re-validating the same string in 8 places”\nMake it a value object: an opaque type with a smart constructor that validates once at the boundary. (Kata 1.)\n\n\n“I have a 12-field record and I add one more every sprint”\nFind the sub-clusters hiding inside. Often there’s an aggregate root pretending to be a record, with two value objects pretending to be fields. (Katas 1, 2, 4.)\n\n\n“Every endpoint takes 9 arguments now”\nBundle them into a Deps record and pass it down. (Chill-DI bag.)\n\n\n“I want X to happen after Y but X shouldn’t know about Y”\nIntroduce an event that Y emits and X listens for. (Kata 5.)\n\n\n“Tests are slow because they hit the database”\nRepository as record of functions; pass in_memory() in tests. (Kata 6.)\n\n\n“Two teams are stepping on each other in the same module”\nBounded contexts. (Kata 7.)\n\n\n“Restarting the server loses everything”\nSQLite (or Postgres) adapter, same repo interface. (Kata 9.)\nSomething concrete in the codebase provokes each move: write the straightforward thing, hit the wall, refactor toward the pattern. The wall is information unavailable on day one and unrecoverable from speculation.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#signs-youve-over-applied-ddd",
+    "href": "12_in_practice.html#signs-youve-over-applied-ddd",
+    "title": "12. Putting It Into Practice",
+    "section": "Signs you’ve over-applied DDD",
+    "text": "Signs you’ve over-applied DDD\nA pattern outlasts its reason and turns into ceremony. The shapes that line tends to take:\n\nA Repository interface with one implementation, a wrapper rather than a port. If you aren’t swapping implementations between tests and prod, or between backends, the indirection isn’t paying for itself yet.\nCode reviews that argue whether something is an Entity or a Value Object. Productive for five minutes, a red flag at thirty.\nAn aggregate root with 47 methods, usually two aggregates trying to be one, or an aggregate that wants to be a domain service.\nBug fixes that touch six files because of “the layering.” Layers are supposed to contain changes; when small changes ripple wide, the layering is doing the opposite of its job.\nA Saga or Process Manager added “just in case.” These solve specific scaling problems, and without the problem they’re cosplay.\nA Deps record with one field. Just pass the field; reach for the bag once there are three things travelling together.\n\nWhen you spot one, the fix is usually to delete the abstraction and inline what it was wrapping. Subtractive refactoring is the most underrated tool in this toolkit.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#testing-in-a-ddd-shaped-pyramid",
+    "href": "12_in_practice.html#testing-in-a-ddd-shaped-pyramid",
+    "title": "12. Putting It Into Practice",
+    "section": "Testing in a DDD-shaped pyramid",
+    "text": "Testing in a DDD-shaped pyramid\nThe pyramid the katas built:\n              ╱────────╲       few, slow:\n             ╱  end-to- ╲       wisp/simulate -&gt; handler -&gt; use case\n            ╱    end     ╲      -&gt; repo -&gt; assert response\n           ╱──────────────╲\n          ╱  use case      ╲    some, medium:\n         ╱  with in-memory  ╲   place_order.run against in_memory()\n        ╱     adapters       ╲  repo. No HTTP. No real DB.\n       ╱──────────────────────╲\n      ╱  pure domain function  ╲  many, fast:\n     ╱      unit tests          ╲  order.add_line(...) with various\n    ╱────────────────────────────╲ inputs. No IO. Milliseconds.\nThe pyramid only inverts when there’s nothing pure to test. The non-DDD shape (logic smeared across HTTP handlers, ORM callbacks, and DB triggers) forces every test to the top, because no clean domain layer exists to exercise on its own. The testing payoff from DDD is that the bottom of the pyramid exists at all.\nProperty-based testing belongs at the bottom. Smart constructors and state-transition methods are obvious property targets. (“For all non-empty strings, email.new either succeeds or returns a typed error.”)",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#composition-root-in-production",
+    "href": "12_in_practice.html#composition-root-in-production",
+    "title": "12. Putting It Into Practice",
+    "section": "Composition root in production",
+    "text": "Composition root in production\nThe main.gleam from kata 8 was the minimum. A production composition root does more:\npub fn main() {\n  // 1. Read configuration from env vars, at the top, exactly once\n  let config = config.from_env()\n\n  // 2. Open shared resources (DB pool, HTTP clients, secret keys)\n  let assert Ok(conn) = sqlight.open(config.database_path)\n  let secret = config.session_secret\n\n  // 3. Construct adapters\n  let assert Ok(order_repo) = order_repo_sqlite.sqlite(conn)\n\n  // 4. Bundle dependencies\n  let deps = Deps(\n    order_repo: order_repo,\n    clock: time.now,\n    // ... more as the app grows\n  )\n\n  // 5. Build the request handler from deps\n  let handle = web.router(deps)\n\n  // 6. Start the server (supervised when you need crash recovery)\n  let assert Ok(_) =\n    wisp_mist.handler(handle, secret)\n    |&gt; mist.new\n    |&gt; mist.port(config.port)\n    |&gt; mist.start\n\n  process.sleep_forever()\n}\nConfiguration enters once, at the top. Scattering env.get(...) calls through the codebase always rots. Resources have known lifetimes: the DB connection lives for the process, tests open their own, and “lazy pool that initializes on first use” reliably ships the “works locally, breaks in production” class of bug. Failure to initialize crashes the boot, so a missing DB exits the process before the first request instead of three minutes later when a user notices. Supervision wraps everything when you need it; plain HTTP servers don’t, since Mist supervises itself. Below the composition root, nothing else has let assert Ok(...) on adapter construction.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#talking-to-non-ddd-colleagues",
+    "href": "12_in_practice.html#talking-to-non-ddd-colleagues",
+    "title": "12. Putting It Into Practice",
+    "section": "Talking to non-DDD colleagues",
+    "text": "Talking to non-DDD colleagues\nMost engineers haven’t read Evans. Saying “the aggregate’s invariant requires that the bounded context emit a domain event so the anti-corruption layer can translate it” will reliably glaze the room.\nTranslate down:\n\n\n\n\n\n\n\nDDD term\nPlain version\n\n\n\n\nAggregate\n“The cluster of stuff that has to be saved together”\n\n\nAggregate root\n“The thing the rest of the code talks to”\n\n\nInvariant\n“A rule we always want to be true”\n\n\nBounded context\n“The slice of the system this team owns”\n\n\nValue object\n“A type that’s just its data, like a number”\n\n\nEntity\n“Something with an ID, same person across renames”\n\n\nRepository\n“How we load and save the X”\n\n\nDomain event\n“Something that happened, that other parts care about”\n\n\nUse case\n“The thing one button does”\n\n\nSmart constructor\n“The function that makes a valid one”\n\n\nAnti-corruption layer\n“The translator between us and the other team’s API”\n\n\nPorts and adapters\n“The implementation plugs into an interface”\n\n\nUbiquitous language\n“We use the same words the business uses”\n\n\n\nReach for jargon when it makes the conversation shorter, plain language when it makes the conversation clearer. The system is what matters; the vocabulary is the tool you use to talk about it.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#whats-beyond-the-foundation",
+    "href": "12_in_practice.html#whats-beyond-the-foundation",
+    "title": "12. Putting It Into Practice",
+    "section": "What’s beyond the foundation",
+    "text": "What’s beyond the foundation\nThe katas covered the load-bearing patterns. Beyond them, larger ideas show up in production systems, roughly in this order:\n\n1. Event sourcing\nStore the event log and derive current state by replaying it. The log is the source of truth, and aggregate state is just a projection of it. You get an audit log for free, and “what was this customer’s state on June 14?” becomes a query instead of a forensic exercise.\nWhen to reach: high audit or compliance demand; complex history the team has to reason about; “how did we get into this state?” as a recurring debugging question.\nWhen to skip: most CRUD apps. The complexity overhead lasts forever.\n\n\n2. CQRS: Command/Query Responsibility Segregation\nSeparate models for writes (commands) and reads (queries). Aggregates handle the writes while denormalized projections handle the reads.\nWhen to reach: read-heavy apps where the aggregate shape is the wrong shape to query; cross-aggregate reports; materialized views.\nWhen to skip: writes and reads use roughly the same shape.\n\n\n3. Sagas / Process Managers\nCoordinated multi-step workflows that span aggregates or services: “place order, reserve inventory, charge card, ship, email receipt.” Each step is a use case, and the saga handles sequencing, retry, and compensation when a step fails.\nWhen to reach: multi-aggregate workflows that cross service boundaries; explicit compensation logic that the business cares about.\nWhen to skip: workflows that fit in one transaction.\n\n\n4. Distributed event delivery\nMoving from in-process function calls to a message broker (Kafka, NATS, RabbitMQ) or BEAM distribution. Aggregate code stays identical; only the wiring at the composition root changes, publishing to the broker instead of calling handler functions directly.\nWhen to reach: services in different processes or data centers; at-least-once delivery, retries, dead-letter queues; consumers that should be independently restartable.\nWhen to skip: monolith, or any case where a synchronous in-process call is fine.\n\n\n5. Anti-corruption layers in earnest\nAdapters between your domain and a system whose model you don’t control. The ACL translates their vocabulary into yours, so the rest of your code only ever sees your types.\nWhen to reach: integrating with a system you don’t own and can’t change; multiple teams whose APIs evolve on their own schedule.\nWhen to skip: small project, one team, all code under your control.\nEach of these is its own book. The kata progression is the foundation that makes those books readable.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#what-the-kata-omits-and-what-youd-add-to-ship-it",
+    "href": "12_in_practice.html#what-the-kata-omits-and-what-youd-add-to-ship-it",
+    "title": "12. Putting It Into Practice",
+    "section": "What the kata omits, and what you’d add to ship it",
+    "text": "What the kata omits, and what you’d add to ship it\nTwo load-bearing pieces sit just outside the kata’s scope, and they’re the first things any extension runs into.\n\nCustomer endpoints\nThe HTTP boundary accepts customer_id as a string and never checks whether the customer exists. There are no POST /customers or GET /customers/:id endpoints, even though src/customer.gleam defines the type. If you add them, you have to decide how Ordering should treat the cross-context reference:\n\n\nPre-validation: call CustomerRepo.find before accepting an order; reject unknown ids.\n\n\nAsync subscription: Customer publishes CustomerCreated; Ordering keeps a local index.\n\n\nTrust by default: accept any id, reconcile via a periodic job if needed.\n\n\nPick one deliberately when it matters. The kata implements (c) by omission, which is fine for a learning project but worth being honest about for anything that ships.\n\n\nJSON request bodies\nThe HTTP boundary kata uses path parameters only. Real APIs take JSON bodies, which means a decoder per endpoint that translates Result(InputStruct, json.DecodeError) into either a 422 with details or a use-case call. The shape doesn’t change (it’s another translation layer in the shell), but it’s its own skill, covered in Wisp + gleam_json cookbook material.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#a-few-patterns-the-book-skipped-on-purpose",
+    "href": "12_in_practice.html#a-few-patterns-the-book-skipped-on-purpose",
+    "title": "12. Putting It Into Practice",
+    "section": "A few patterns the book skipped on purpose",
+    "text": "A few patterns the book skipped on purpose\nWorth flagging because you’ll run into them in other books and wonder where they went:\n\nDomain Services: operations that don’t naturally belong on any one entity. (“Transfer money from A to B”, since neither account “owns” the transfer.) In Gleam, that’s a top-level function that takes both. The “Service” object is OO baggage.\nSpecifications: composable query objects like “active customers in California with last order over $100.” Useful in OO languages where queries have to be objects. In Gleam, write functions and compose them with |&gt;.\nFactories as classes. Gleam’s smart constructors already are the factory, so no additional ceremony earns its keep.\nLayered architecture as packages: application/, domain/, infrastructure/. Often right in spirit and often expensive in practice. Start flat and let coupling pressure suggest the split.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#a-few-things-that-arent-ddd-but-pair-well-with-it",
+    "href": "12_in_practice.html#a-few-things-that-arent-ddd-but-pair-well-with-it",
+    "title": "12. Putting It Into Practice",
+    "section": "A few things that aren’t DDD but pair well with it",
+    "text": "A few things that aren’t DDD but pair well with it\n\nProperty-based testing for smart constructors and pure domain functions. gleam_qcheck or similar.\nSnapshot testing for stable JSON outputs like HTTP responses and events. Catches accidental shape changes you’d otherwise notice in production.\nSchema migrations as ordered SQL files (dbmate, sqitch, gorrion). Plain SQL keeps you honest about what the database does.\nOpenTelemetry traces through the use case → handler → adapter call graph. The DDD layering makes the trace structure read like the code.\nStatic dependency-graph linting, so you find out the moment Ordering accidentally imports something from Shipping.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "12_in_practice.html#a-short-closing",
+    "href": "12_in_practice.html#a-short-closing",
+    "title": "12. Putting It Into Practice",
+    "section": "A short closing",
+    "text": "A short closing\nThe vocabulary, the patterns in idiomatic Gleam, and some judgment about when to wait are now in hand, along with the moves that keep each pattern small: records of functions in place of interface hierarchies, smart constructors in place of Factory classes, closures in place of DI containers, modules in place of multi-package layouts.\nMuscle memory is what a book can’t give. Build something small with these tools and ship it. Most of what the project needs was already in the first four chapters; the rest sits in the back of the mind, available when a problem justifies pulling it out.",
+    "crumbs": [
+      "<span class='chapter-number'>13</span>  <span class='chapter-title'>12. Putting It Into Practice</span>"
+    ]
+  },
+  {
+    "objectID": "use.html",
+    "href": "use.html",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "",
+    "text": "1. The mechanical rule\nGleam’s use is one keyword with one mechanical rule, but it shows up in several different shapes. Once you internalize the rule, every shape is just an application of it. This doc walks through the rule, then the patterns you’ll hit most often.\ndesugars to exactly:\nThat’s the whole feature. use takes the rest of the block, wraps it in an anonymous function, and passes that function as the last argument to f.\nA few consequences fall out of that one rule:",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#the-mechanical-rule",
+    "href": "use.html#the-mechanical-rule",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "",
+    "text": "use &lt;bindings&gt; &lt;- f(arg1, arg2, ..., argN)\n&lt;rest of block&gt;\n\nf(arg1, arg2, ..., argN, fn(&lt;bindings&gt;) { &lt;rest of block&gt; })\n\n\n\nThe helper f is just a normal function that happens to take a callback as its last parameter. Nothing magical about it.\nWhatever the callback returns is what f returns (in the success branch). So your block’s last expression is the function’s value.\nuse must be followed by something — there has to be a “rest of the block” to lift into the callback. A use line on its own is an error.\n\n\nWhy Gleam has this\nGleam is expression-based and has no early return. Without use, every “check then continue” pattern becomes a nested case, and chains of fallible operations become a pyramid.\nConcretely: Customer.new in this repo is strict — it takes (id: CustomerId, name: String, email: Email), all pre-validated. But somewhere at the boundary (HTTP handler, CLI, DB row) you have raw strings that need to be turned into those value objects first. That “raw → validated” factory is where the chain lives. Without use it looks like this:\ncase email.new(raw_email) {\n  Error(e) -&gt; Error(InvalidEmail(e))\n  Ok(email) -&gt; case customer.new_id(raw_id) {\n    Error(e) -&gt; Error(e)\n    Ok(id) -&gt; customer.new(id, raw_name, email)\n  }\n}\nWith use and result.try, that pyramid flattens into a sequence:\nimport gleam/result\n\nuse email &lt;- result.try(email.new(raw_email) |&gt; result.map_error(InvalidEmail))\nuse id &lt;- result.try(customer.new_id(raw_id))\ncustomer.new(id, raw_name, email)\nEach line is one validation step. There is no nesting, no manually re-propagating errors, no Ok(...) -&gt; case ... ladder. If any step returns Error, the whole block short-circuits with that error; if all succeed, the final expression is the function’s return value.\n(Adding this boundary factory would require adding InvalidEmail(EmailError) to CustomerError so the email error has a place to live — see section 4.)\nuse is Gleam’s answer to Rust’s ?, Haskell’s do notation, and Clojure’s macros — but with one syntactic rule covering all the cases instead of a separate construct per case.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#the-shape-of-the-helper",
+    "href": "use.html#the-shape-of-the-helper",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "2. The shape of the helper",
+    "text": "2. The shape of the helper\nAny function with this general signature is a candidate for use:\nfn helper(arg1, arg2, ..., callback: fn(...) -&gt; R) -&gt; R\nThe helper decides three things:\n\nWhat arguments the callback receives (zero or more, of any types).\nWhen the callback runs (always? only on success? only on failure?).\nWhat to return when the callback doesn’t run (the short-circuit value).\n\nThat’s the design space. Every pattern below is a different choice across those three knobs.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#pattern-guard-short-circuit-zero-arg-callback",
+    "href": "use.html#pattern-guard-short-circuit-zero-arg-callback",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "3. Pattern — guard / short-circuit (zero-arg callback)",
+    "text": "3. Pattern — guard / short-circuit (zero-arg callback)\nThe helper takes a precondition. If it passes, it runs the callback (the rest of your block). If it fails, it returns an error directly.\nfn require_same_currency(\n  a: Money,\n  b: Money,\n  then: fn() -&gt; Result(t, MoneyError),\n) -&gt; Result(t, MoneyError) {\n  case a.currency == b.currency {\n    False -&gt; Error(CurrencyMismatch)\n    True -&gt; then()\n  }\n}\n\npub fn add(a: Money, b: Money) -&gt; Result(Money, MoneyError) {\n  use &lt;- require_same_currency(a, b)\n  new(a.amount + b.amount, a.currency)\n}\nKey signals it’s a guard:\n\nThe callback’s parameter list is empty (fn() -&gt; ...).\nAt the call site you write use &lt;- f(...) with no binding.\nThe check is the entire contract of the helper.\n\nOther guard examples worth writing:\nfn require_authenticated(session, then: fn() -&gt; Result(a, e)) -&gt; Result(a, e)\nfn require_role(session, role, then: fn() -&gt; Result(a, e)) -&gt; Result(a, e)\nfn require_non_empty(s: String, then: fn() -&gt; Result(a, FieldError)) -&gt; Result(a, FieldError)\nYou’re effectively building little control-flow combinators for your domain.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#pattern-result-chaining-one-arg-callback",
+    "href": "use.html#pattern-result-chaining-one-arg-callback",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "4. Pattern — Result chaining (one-arg callback)",
+    "text": "4. Pattern — Result chaining (one-arg callback)\nThe helper unwraps a Result, passes the inner value to the callback, and short-circuits on error. This is result.try:\n// from gleam/result\npub fn try(\n  result: Result(a, e),\n  apply: fn(a) -&gt; Result(b, e),\n) -&gt; Result(b, e)\nUsed with use. The natural home for this in our codebase is a from_raw boundary factory that pairs with the strict inner Customer.new:\n// Strict inner constructor (already in customer.gleam) — no `use` needed,\n// because every argument is already a validated value object.\npub fn new(\n  id: CustomerId,\n  name: String,\n  email: Email,\n) -&gt; Result(Customer, CustomerError) {\n  case string.length(name) {\n    0 -&gt; Error(EmptyName)\n    _ -&gt; Ok(Customer(id, name, email))\n  }\n}\n\n// Boundary factory — turns raw strings into a Customer, composing errors.\n// This is where the `use` chain belongs. Requires CustomerError to gain\n// an `InvalidEmail(EmailError)` variant.\npub fn from_raw(\n  raw_id: String,\n  raw_name: String,\n  raw_email: String,\n) -&gt; Result(Customer, CustomerError) {\n  use email &lt;- result.try(email.new(raw_email) |&gt; result.map_error(InvalidEmail))\n  use id &lt;- result.try(new_id(raw_id))\n  new(id, raw_name, email)\n}\nTwo layers, two responsibilities:\n\nnew enforces Customer-level invariants and trusts its value-object inputs. No use because there’s nothing to short-circuit on.\nfrom_raw is the boundary — turns untrusted strings into trusted values, composes the errors, then delegates to new.\n\nThis is the moral equivalent of:\n\nRust: let email = email::new(raw_email).map_err(InvalidEmail)?;\nHaskell: email &lt;- liftError InvalidEmail (Email.new raw_email)\nF#: let! email = ...\n\nKey gotcha — error types must match. result.try requires the input’s error type to match the function’s return error type. When they differ, lift the inner error with result.map_error(WrappingConstructor) — exactly what the email line above does. This is why composing modules pushes you toward each module owning its own error type and wrapping others rather than sharing one giant error enum.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#pattern-option-chaining",
+    "href": "use.html#pattern-option-chaining",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "5. Pattern — Option chaining",
+    "text": "5. Pattern — Option chaining\nSame shape as Result chaining, with option.then:\nimport gleam/option.{type Option, Some, None}\n\npub fn shipping_eta(customer: Customer) -&gt; Option(Date) {\n  use address &lt;- option.then(customer.address)\n  use zone &lt;- option.then(zone_for(address))\n  Some(eta_for_zone(zone))\n}\nReturns None if any link in the chain is None, otherwise Some(...).",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#pattern-resource-acquisition-with-style",
+    "href": "use.html#pattern-resource-acquisition-with-style",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "6. Pattern — resource acquisition (with-style)",
+    "text": "6. Pattern — resource acquisition (with-style)\nA helper that always runs the callback but wraps it in setup/teardown. Same idea as with-open in Clojure or with in Python.\nfn with_db_connection(\n  config: Config,\n  body: fn(Connection) -&gt; a,\n) -&gt; a {\n  let conn = connect(config)\n  let result = body(conn)\n  close(conn)\n  result\n}\n\npub fn fetch_user(config: Config, id: Int) -&gt; Result(User, DbError) {\n  use conn &lt;- with_db_connection(config)\n  query(conn, \"select ...\", [id])\n}\nThe connection always closes, even if body returned an error, because close(conn) runs after body(conn) returns. (For real cleanup you need to handle exceptions; Gleam has libraries for this — the pattern is what matters here.)",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#pattern-list-iteration-less-common",
+    "href": "use.html#pattern-list-iteration-less-common",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "7. Pattern — list iteration (less common)",
+    "text": "7. Pattern — list iteration (less common)\nYou can use use with list.try_each and friends to iterate fallibly while keeping the body flat:\nuse _ &lt;- list.try_each(orders)  // returns Error on first failure\nprocess_order(_)\nHonestly, for most list work, list.map and list.try_map in pipelines read better than use. Reach for use when the body is multi-line or has its own internal use chain.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#pattern-custom-dsls",
+    "href": "use.html#pattern-custom-dsls",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "8. Pattern — custom DSLs",
+    "text": "8. Pattern — custom DSLs\nOnce you see use as “callback with this last-arg shape,” you can build your own combinators:\nfn assert_field(name: String, value: String, then: fn(String) -&gt; Result(a, FieldError))\n  -&gt; Result(a, FieldError) {\n  case string.trim(value) {\n    \"\" -&gt; Error(FieldError(name, \"must not be empty\"))\n    trimmed -&gt; then(trimmed)\n  }\n}\n\npub fn parse_form(raw: Form) -&gt; Result(ValidForm, FieldError) {\n  use name &lt;- assert_field(\"name\", raw.name)\n  use email &lt;- assert_field(\"email\", raw.email)\n  use age_str &lt;- assert_field(\"age\", raw.age)\n  use age &lt;- result.try(parse_int(age_str))\n  Ok(ValidForm(name, email, age))\n}\nEach use line is a single concern; the body is a flat list of validations. Without use this would nest five levels deep.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#syntactic-variants",
+    "href": "use.html#syntactic-variants",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "9. Syntactic variants",
+    "text": "9. Syntactic variants\nuse &lt;- f(args)            // zero-arg callback   (guards)\nuse x &lt;- f(args)          // one-arg callback    (try, then)\nuse x, y &lt;- f(args)       // multi-arg callback  (rare; e.g. fold-style helpers)\nuse _ &lt;- f(args)          // discard the binding (run for side effect)\nThe number of bindings on the left of &lt;- must match the callback’s parameter count exactly. Compiler enforces this.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#type-constraints-the-part-that-bites",
+    "href": "use.html#type-constraints-the-part-that-bites",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "10. Type constraints (the part that bites)",
+    "text": "10. Type constraints (the part that bites)\nThe callback’s return type has to line up with what the helper expects. The two most common mismatches:\nMismatched error types in result.try:\n// won't compile — EmailError ≠ CustomerError\nuse email &lt;- result.try(email.new(raw))\n\n// fixed — lift the inner error\nuse email &lt;- result.try(email.new(raw) |&gt; result.map_error(InvalidEmail))\nWrong return type from the body:\nThe body of a use block must return what the helper’s callback declared. For result.try, that’s Result(_, e). So the last line of a use-chained function is almost always Ok(something) or Error(something), not a bare value:\nuse email &lt;- result.try(...)\nOk(Customer(email))   // ✓\nCustomer(email)       // ✗ — type error, expected Result, got Customer",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#when-not-to-reach-for-use",
+    "href": "use.html#when-not-to-reach-for-use",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "11. When NOT to reach for use",
+    "text": "11. When NOT to reach for use\n\nOne-shot pattern matching with no chain: let assert Ok(x) = ... is fine (when crashing on Error is acceptable) and reads more directly than use x &lt;- result.try(...) followed by a single line.\nThe body has only one statement. Nesting one level isn’t a sin. use pays off when there are two or more steps to flatten.\nThe helper isn’t really doing control flow. If you find yourself writing a “helper” that just calls the callback unconditionally, the use is just obfuscation — drop it.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  },
+  {
+    "objectID": "use.html#mental-model-summary",
+    "href": "use.html#mental-model-summary",
+    "title": "Appendix A — use in Gleam — an in-depth explainer",
+    "section": "12. Mental model summary",
+    "text": "12. Mental model summary\nForget the syntax for a second. The shape use ... &lt;- f(...) says:\n\n“I’m about to do the rest of this function as a callback. f, you decide what to do with it: run it, skip it, run it conditionally, run it with cleanup, run it with these arguments. Whatever you return is what I return.”\n\nThat’s it. Every pattern in this doc is a different choice the helper makes about how to use that callback. Once helpers exist for guards (your domain), Result (result.try), Option (option.then), and resources, most Gleam business logic flattens into a sequence of use lines reading top-to-bottom like a recipe.\nCompared to other languages:\n\n\n\n\n\n\n\n\n\n\nNeed\nGleam\nRust\nClojure\nHaskell\n\n\n\n\nResult short-circuit\nuse x &lt;- try(...)\n?\nsome-&gt; / mlet\ndo + &lt;-\n\n\nGuard / early return\nuse &lt;- guard(...)\nif cond { return }\nmacro / when-let\nwhen\n\n\nResource handling\nuse r &lt;- with(...)\nDrop trait\nwith-open\nbracket\n\n\nNew control flow\nhelper + use\nmacro / fn\nmacro\nmonad / fn\n\n\n\nGleam is unusual in answering all four with the same one-syntax-rule mechanism. That uniformity is the whole point.",
+    "crumbs": [
+      "Appendices",
+      "<span class='chapter-number'>A</span>  <span class='chapter-title'>`use` in Gleam — an in-depth explainer</span>"
+    ]
+  }
+]

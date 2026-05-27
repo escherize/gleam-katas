@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Appendix A — use in Gleam — an in-depth explainer – DDD in Gleam</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./12_in_practice.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-367522ac618891c39d4b2ae87ea7600e.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./use.html">Appendices</a></li><li class="breadcrumb-item"><a href="./use.html"><span class="chapter-title"><code>use</code> in Gleam — an in-depth explainer</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">DDD in Gleam</a> 
+        <div class="sidebar-tools-main">
+    <a href="https://github.com/escherize/gleam-katas/tree/solutions/docs/book/" title="Source Code" class="quarto-navigation-tool px-1" aria-label="Source Code"><i class="bi bi-github"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Welcome</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./00_introduction.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">00: Introduction</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01_fundamentals.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">01. Gleam fundamentals for Kata 1</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02_kata_email.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">02. Kata 1: Value Objects (<code>Email</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03_kata_money.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">03. Kata 2: Value Objects with operations (<code>Money</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04_kata_customer.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">04. Kata 3: Entities (<code>Customer</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05_kata_order.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">05. Kata 4: Aggregates (<code>Order</code>)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06_kata_events.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">06. Kata 5: Domain Events</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07_kata_repositories.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">07. Kata 6: Repositories</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./08_kata_bounded_contexts.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">08. Kata 7: Bounded Contexts</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./09_kata_http_boundary.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">09. Kata 8: Composition Root + HTTP Boundary</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./10_kata_sqlite_repo.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">10. Kata 9: SQLite Repository</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./11_kata_wiring.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">11. Kata 10: Wiring and Configuration</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./12_in_practice.html" class="sidebar-item-text sidebar-link"><span class="chapter-title">12. Putting It Into Practice</span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Appendices</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./use.html" class="sidebar-item-text sidebar-link active"><span class="chapter-title"><code>use</code> in Gleam — an in-depth explainer</span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#the-mechanical-rule" id="toc-the-mechanical-rule" class="nav-link active" data-scroll-target="#the-mechanical-rule">1. The mechanical rule</a>
+  <ul class="collapse">
+  <li><a href="#why-gleam-has-this" id="toc-why-gleam-has-this" class="nav-link" data-scroll-target="#why-gleam-has-this">Why Gleam has this</a></li>
+  </ul></li>
+  <li><a href="#the-shape-of-the-helper" id="toc-the-shape-of-the-helper" class="nav-link" data-scroll-target="#the-shape-of-the-helper">2. The shape of the helper</a></li>
+  <li><a href="#pattern-guard-short-circuit-zero-arg-callback" id="toc-pattern-guard-short-circuit-zero-arg-callback" class="nav-link" data-scroll-target="#pattern-guard-short-circuit-zero-arg-callback">3. Pattern — guard / short-circuit (zero-arg callback)</a></li>
+  <li><a href="#pattern-result-chaining-one-arg-callback" id="toc-pattern-result-chaining-one-arg-callback" class="nav-link" data-scroll-target="#pattern-result-chaining-one-arg-callback">4. Pattern — <code>Result</code> chaining (one-arg callback)</a></li>
+  <li><a href="#pattern-option-chaining" id="toc-pattern-option-chaining" class="nav-link" data-scroll-target="#pattern-option-chaining">5. Pattern — <code>Option</code> chaining</a></li>
+  <li><a href="#pattern-resource-acquisition-with-style" id="toc-pattern-resource-acquisition-with-style" class="nav-link" data-scroll-target="#pattern-resource-acquisition-with-style">6. Pattern — resource acquisition (with-style)</a></li>
+  <li><a href="#pattern-list-iteration-less-common" id="toc-pattern-list-iteration-less-common" class="nav-link" data-scroll-target="#pattern-list-iteration-less-common">7. Pattern — list iteration (less common)</a></li>
+  <li><a href="#pattern-custom-dsls" id="toc-pattern-custom-dsls" class="nav-link" data-scroll-target="#pattern-custom-dsls">8. Pattern — custom DSLs</a></li>
+  <li><a href="#syntactic-variants" id="toc-syntactic-variants" class="nav-link" data-scroll-target="#syntactic-variants">9. Syntactic variants</a></li>
+  <li><a href="#type-constraints-the-part-that-bites" id="toc-type-constraints-the-part-that-bites" class="nav-link" data-scroll-target="#type-constraints-the-part-that-bites">10. Type constraints (the part that bites)</a></li>
+  <li><a href="#when-not-to-reach-for-use" id="toc-when-not-to-reach-for-use" class="nav-link" data-scroll-target="#when-not-to-reach-for-use">11. When NOT to reach for <code>use</code></a></li>
+  <li><a href="#mental-model-summary" id="toc-mental-model-summary" class="nav-link" data-scroll-target="#mental-model-summary">12. Mental model summary</a></li>
+  </ul>
+<div class="toc-actions"><ul><li><a href="https://github.com/escherize/gleam-katas/edit/solutions/docs/book/use.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/escherize/gleam-katas/blob/solutions/docs/book/use.md" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./use.html">Appendices</a></li><li class="breadcrumb-item"><a href="./use.html"><span class="chapter-title"><code>use</code> in Gleam — an in-depth explainer</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title">Appendix A — <code>use</code> in Gleam — an in-depth explainer</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>Gleam’s <code>use</code> is one keyword with one mechanical rule, but it shows up in several different shapes. Once you internalize the rule, every shape is just an application of it. This doc walks through the rule, then the patterns you’ll hit most often.</p>
+<hr>
+<section id="the-mechanical-rule" class="level2">
+<h2 class="anchored" data-anchor-id="the-mechanical-rule">1. The mechanical rule</h2>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> <span class="op">&lt;</span>bindings<span class="op">&gt;</span> <span class="op">&lt;-</span> <span class="fu">f</span><span class="op">(</span>arg1<span class="op">,</span> arg2<span class="op">,</span> <span class="op">...,</span> argN<span class="op">)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="op">&lt;</span>rest of block<span class="op">&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>desugars to exactly:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">f</span><span class="op">(</span>arg1<span class="op">,</span> arg2<span class="op">,</span> <span class="op">...,</span> argN<span class="op">,</span> <span class="kw">fn</span><span class="op">(&lt;</span>bindings<span class="op">&gt;)</span> <span class="op">{</span> <span class="op">&lt;</span>rest of block<span class="op">&gt;</span> <span class="op">})</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>That’s the whole feature. <code>use</code> takes the rest of the block, wraps it in an anonymous function, and passes that function as the <strong>last argument</strong> to <code>f</code>.</p>
+<p>A few consequences fall out of that one rule:</p>
+<ul>
+<li>The helper <code>f</code> is just a normal function that happens to take a callback as its last parameter. Nothing magical about it.</li>
+<li>Whatever the callback returns is what <code>f</code> returns (in the success branch). So your block’s last expression is the function’s value.</li>
+<li><code>use</code> must be followed by something — there has to be a “rest of the block” to lift into the callback. A <code>use</code> line on its own is an error.</li>
+</ul>
+<section id="why-gleam-has-this" class="level3">
+<h3 class="anchored" data-anchor-id="why-gleam-has-this">Why Gleam has this</h3>
+<p>Gleam is <strong>expression-based and has no early <code>return</code></strong>. Without <code>use</code>, every “check then continue” pattern becomes a nested <code>case</code>, and chains of fallible operations become a pyramid.</p>
+<p>Concretely: <code>Customer.new</code> in this repo is strict — it takes <code>(id: CustomerId, name: String, email: Email)</code>, all pre-validated. But somewhere at the boundary (HTTP handler, CLI, DB row) you have raw strings that need to be turned into those value objects first. That “raw → validated” factory is where the chain lives. Without <code>use</code> it looks like this:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">case</span> email<span class="op">.</span><span class="fu">new</span><span class="op">(</span>raw_email<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Error</span><span class="op">(</span>e<span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Error</span><span class="op">(</span><span class="dt">InvalidEmail</span><span class="op">(</span>e<span class="op">))</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Ok</span><span class="op">(</span>email<span class="op">)</span> <span class="op">-&gt;</span> <span class="kw">case</span> customer<span class="op">.</span><span class="fu">new_id</span><span class="op">(</span>raw_id<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Error</span><span class="op">(</span>e<span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Error</span><span class="op">(</span>e<span class="op">)</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">Ok</span><span class="op">(</span>id<span class="op">)</span> <span class="op">-&gt;</span> customer<span class="op">.</span><span class="fu">new</span><span class="op">(</span>id<span class="op">,</span> raw_name<span class="op">,</span> email<span class="op">)</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>With <code>use</code> and <code>result.try</code>, that pyramid flattens into a sequence:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">gleam/result</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> email <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span>email<span class="op">.</span><span class="fu">new</span><span class="op">(</span>raw_email<span class="op">)</span> <span class="op">|&gt;</span> result<span class="op">.</span><span class="fu">map_error</span><span class="op">(</span><span class="dt">InvalidEmail</span><span class="op">))</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> id <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span>customer<span class="op">.</span><span class="fu">new_id</span><span class="op">(</span>raw_id<span class="op">))</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>customer<span class="op">.</span><span class="fu">new</span><span class="op">(</span>id<span class="op">,</span> raw_name<span class="op">,</span> email<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Each line is one validation step. There is no nesting, no manually re-propagating errors, no <code>Ok(...) -&gt; case ...</code> ladder. If any step returns <code>Error</code>, the whole block short-circuits with that error; if all succeed, the final expression is the function’s return value.</p>
+<p>(Adding this boundary factory would require adding <code>InvalidEmail(EmailError)</code> to <code>CustomerError</code> so the email error has a place to live — see section 4.)</p>
+<p><code>use</code> is Gleam’s answer to Rust’s <code>?</code>, Haskell’s <code>do</code> notation, and Clojure’s macros — but with one syntactic rule covering all the cases instead of a separate construct per case.</p>
+<hr>
+</section>
+</section>
+<section id="the-shape-of-the-helper" class="level2">
+<h2 class="anchored" data-anchor-id="the-shape-of-the-helper">2. The shape of the helper</h2>
+<p>Any function with this general signature is a candidate for <code>use</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> <span class="fu">helper</span><span class="op">(</span>arg1<span class="op">,</span> arg2<span class="op">,</span> <span class="op">...,</span> callback<span class="op">:</span> <span class="kw">fn</span><span class="op">(...)</span> <span class="op">-&gt;</span> <span class="dt">R</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">R</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The helper decides three things:</p>
+<ol type="1">
+<li><strong>What arguments the callback receives</strong> (zero or more, of any types).</li>
+<li><strong>When the callback runs</strong> (always? only on success? only on failure?).</li>
+<li><strong>What to return when the callback doesn’t run</strong> (the short-circuit value).</li>
+</ol>
+<p>That’s the design space. Every pattern below is a different choice across those three knobs.</p>
+<hr>
+</section>
+<section id="pattern-guard-short-circuit-zero-arg-callback" class="level2">
+<h2 class="anchored" data-anchor-id="pattern-guard-short-circuit-zero-arg-callback">3. Pattern — guard / short-circuit (zero-arg callback)</h2>
+<p>The helper takes a precondition. If it passes, it runs the callback (the rest of your block). If it fails, it returns an error directly.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> <span class="fu">require_same_currency</span><span class="op">(</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  a<span class="op">:</span> <span class="dt">Money</span><span class="op">,</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  b<span class="op">:</span> <span class="dt">Money</span><span class="op">,</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  then<span class="op">:</span> <span class="kw">fn</span><span class="op">()</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>t<span class="op">,</span> <span class="dt">MoneyError</span><span class="op">),</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>t<span class="op">,</span> <span class="dt">MoneyError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> a<span class="op">.</span>currency <span class="op">==</span> b<span class="op">.</span>currency <span class="op">{</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>    <span class="dt">False</span> <span class="op">-&gt;</span> <span class="dt">Error</span><span class="op">(</span><span class="dt">CurrencyMismatch</span><span class="op">)</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="dt">True</span> <span class="op">-&gt;</span> <span class="fu">then</span><span class="op">()</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">add</span><span class="op">(</span>a<span class="op">:</span> <span class="dt">Money</span><span class="op">,</span> b<span class="op">:</span> <span class="dt">Money</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">Money</span><span class="op">,</span> <span class="dt">MoneyError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> <span class="op">&lt;-</span> <span class="fu">require_same_currency</span><span class="op">(</span>a<span class="op">,</span> b<span class="op">)</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">new</span><span class="op">(</span>a<span class="op">.</span>amount <span class="op">+</span> b<span class="op">.</span>amount<span class="op">,</span> a<span class="op">.</span>currency<span class="op">)</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Key signals it’s a guard:</p>
+<ul>
+<li>The callback’s parameter list is empty (<code>fn() -&gt; ...</code>).</li>
+<li>At the call site you write <code>use &lt;- f(...)</code> with no binding.</li>
+<li>The check is the entire contract of the helper.</li>
+</ul>
+<p>Other guard examples worth writing:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> <span class="fu">require_authenticated</span><span class="op">(</span>session<span class="op">,</span> then<span class="op">:</span> <span class="kw">fn</span><span class="op">()</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>a<span class="op">,</span> e<span class="op">))</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>a<span class="op">,</span> e<span class="op">)</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> <span class="fu">require_role</span><span class="op">(</span>session<span class="op">,</span> role<span class="op">,</span> then<span class="op">:</span> <span class="kw">fn</span><span class="op">()</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>a<span class="op">,</span> e<span class="op">))</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>a<span class="op">,</span> e<span class="op">)</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> <span class="fu">require_non_empty</span><span class="op">(</span>s<span class="op">:</span> <span class="dt">String</span><span class="op">,</span> then<span class="op">:</span> <span class="kw">fn</span><span class="op">()</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>a<span class="op">,</span> <span class="dt">FieldError</span><span class="op">))</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>a<span class="op">,</span> <span class="dt">FieldError</span><span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>You’re effectively building little control-flow combinators for your domain.</p>
+<hr>
+</section>
+<section id="pattern-result-chaining-one-arg-callback" class="level2">
+<h2 class="anchored" data-anchor-id="pattern-result-chaining-one-arg-callback">4. Pattern — <code>Result</code> chaining (one-arg callback)</h2>
+<p>The helper <em>unwraps</em> a <code>Result</code>, passes the inner value to the callback, and short-circuits on error. This is <code>result.try</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">// from gleam/result</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">try</span><span class="op">(</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  result<span class="op">:</span> <span class="dt">Result</span><span class="op">(</span>a<span class="op">,</span> e<span class="op">),</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  apply<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span>a<span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>b<span class="op">,</span> e<span class="op">),</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>b<span class="op">,</span> e<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Used with <code>use</code>. The natural home for this in our codebase is a <code>from_raw</code> boundary factory that pairs with the strict inner <code>Customer.new</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Strict inner constructor (already in customer.gleam) — no `use` needed,</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="co">// because every argument is already a validated value object.</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">new</span><span class="op">(</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  id<span class="op">:</span> <span class="dt">CustomerId</span><span class="op">,</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  name<span class="op">:</span> <span class="dt">String</span><span class="op">,</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  email<span class="op">:</span> <span class="dt">Email</span><span class="op">,</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">Customer</span><span class="op">,</span> <span class="dt">CustomerError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> string<span class="op">.</span><span class="fu">length</span><span class="op">(</span>name<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="dv">0</span> <span class="op">-&gt;</span> <span class="dt">Error</span><span class="op">(</span><span class="dt">EmptyName</span><span class="op">)</span></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>    _ <span class="op">-&gt;</span> <span class="dt">Ok</span><span class="op">(</span><span class="dt">Customer</span><span class="op">(</span>id<span class="op">,</span> name<span class="op">,</span> email<span class="op">))</span></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a><span class="co">// Boundary factory — turns raw strings into a Customer, composing errors.</span></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="co">// This is where the `use` chain belongs. Requires CustomerError to gain</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a><span class="co">// an `InvalidEmail(EmailError)` variant.</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">from_raw</span><span class="op">(</span></span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>  raw_id<span class="op">:</span> <span class="dt">String</span><span class="op">,</span></span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>  raw_name<span class="op">:</span> <span class="dt">String</span><span class="op">,</span></span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a>  raw_email<span class="op">:</span> <span class="dt">String</span><span class="op">,</span></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">Customer</span><span class="op">,</span> <span class="dt">CustomerError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> email <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span>email<span class="op">.</span><span class="fu">new</span><span class="op">(</span>raw_email<span class="op">)</span> <span class="op">|&gt;</span> result<span class="op">.</span><span class="fu">map_error</span><span class="op">(</span><span class="dt">InvalidEmail</span><span class="op">))</span></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> id <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span><span class="fu">new_id</span><span class="op">(</span>raw_id<span class="op">))</span></span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">new</span><span class="op">(</span>id<span class="op">,</span> raw_name<span class="op">,</span> email<span class="op">)</span></span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Two layers, two responsibilities:</p>
+<ul>
+<li><code>new</code> enforces <em>Customer-level</em> invariants and trusts its value-object inputs. No <code>use</code> because there’s nothing to short-circuit on.</li>
+<li><code>from_raw</code> is the boundary — turns untrusted strings into trusted values, composes the errors, then delegates to <code>new</code>.</li>
+</ul>
+<p>This is the moral equivalent of:</p>
+<ul>
+<li>Rust: <code>let email = email::new(raw_email).map_err(InvalidEmail)?;</code></li>
+<li>Haskell: <code>email &lt;- liftError InvalidEmail (Email.new raw_email)</code></li>
+<li>F#: <code>let! email = ...</code></li>
+</ul>
+<p><strong>Key gotcha — error types must match.</strong> <code>result.try</code> requires the input’s error type to match the function’s return error type. When they differ, lift the inner error with <code>result.map_error(WrappingConstructor)</code> — exactly what the email line above does. This is why composing modules pushes you toward each module owning its own error type and <em>wrapping</em> others rather than sharing one giant error enum.</p>
+<hr>
+</section>
+<section id="pattern-option-chaining" class="level2">
+<h2 class="anchored" data-anchor-id="pattern-option-chaining">5. Pattern — <code>Option</code> chaining</h2>
+<p>Same shape as Result chaining, with <code>option.then</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="im">gleam/option</span><span class="op">.{</span><span class="kw">type</span> <span class="dt">Option</span><span class="op">,</span> <span class="dt">Some</span><span class="op">,</span> <span class="dt">None</span><span class="op">}</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">shipping_eta</span><span class="op">(</span>customer<span class="op">:</span> <span class="dt">Customer</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Option</span><span class="op">(</span><span class="dt">Date</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> address <span class="op">&lt;-</span> option<span class="op">.</span><span class="fu">then</span><span class="op">(</span>customer<span class="op">.</span>address<span class="op">)</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> zone <span class="op">&lt;-</span> option<span class="op">.</span><span class="fu">then</span><span class="op">(</span><span class="fu">zone_for</span><span class="op">(</span>address<span class="op">))</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Some</span><span class="op">(</span><span class="fu">eta_for_zone</span><span class="op">(</span>zone<span class="op">))</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Returns <code>None</code> if any link in the chain is <code>None</code>, otherwise <code>Some(...)</code>.</p>
+<hr>
+</section>
+<section id="pattern-resource-acquisition-with-style" class="level2">
+<h2 class="anchored" data-anchor-id="pattern-resource-acquisition-with-style">6. Pattern — resource acquisition (with-style)</h2>
+<p>A helper that <strong>always</strong> runs the callback but wraps it in setup/teardown. Same idea as <code>with-open</code> in Clojure or <code>with</code> in Python.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> <span class="fu">with_db_connection</span><span class="op">(</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  config<span class="op">:</span> <span class="dt">Config</span><span class="op">,</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  body<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span><span class="dt">Connection</span><span class="op">)</span> <span class="op">-&gt;</span> a<span class="op">,</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="op">)</span> <span class="op">-&gt;</span> a <span class="op">{</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> conn <span class="op">=</span> <span class="fu">connect</span><span class="op">(</span>config<span class="op">)</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">let</span> result <span class="op">=</span> <span class="fu">body</span><span class="op">(</span>conn<span class="op">)</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">close</span><span class="op">(</span>conn<span class="op">)</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  result</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">fetch_user</span><span class="op">(</span>config<span class="op">:</span> <span class="dt">Config</span><span class="op">,</span> id<span class="op">:</span> <span class="dt">Int</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">User</span><span class="op">,</span> <span class="dt">DbError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> conn <span class="op">&lt;-</span> <span class="fu">with_db_connection</span><span class="op">(</span>config<span class="op">)</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">query</span><span class="op">(</span>conn<span class="op">,</span> <span class="st">"select ..."</span><span class="op">,</span> <span class="op">[</span>id<span class="op">])</span></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The connection always closes, even if <code>body</code> returned an error, because <code>close(conn)</code> runs after <code>body(conn)</code> returns. (For real cleanup you need to handle exceptions; Gleam has libraries for this — the pattern is what matters here.)</p>
+<hr>
+</section>
+<section id="pattern-list-iteration-less-common" class="level2">
+<h2 class="anchored" data-anchor-id="pattern-list-iteration-less-common">7. Pattern — list iteration (less common)</h2>
+<p>You can use <code>use</code> with <code>list.try_each</code> and friends to iterate fallibly while keeping the body flat:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> _ <span class="op">&lt;-</span> list<span class="op">.</span><span class="fu">try_each</span><span class="op">(</span>orders<span class="op">)</span>  <span class="co">// returns Error on first failure</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">process_order</span><span class="op">(</span>_<span class="op">)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Honestly, for most list work, <code>list.map</code> and <code>list.try_map</code> in pipelines read better than <code>use</code>. Reach for <code>use</code> when the body is multi-line or has its own internal <code>use</code> chain.</p>
+<hr>
+</section>
+<section id="pattern-custom-dsls" class="level2">
+<h2 class="anchored" data-anchor-id="pattern-custom-dsls">8. Pattern — custom DSLs</h2>
+<p>Once you see <code>use</code> as “callback with this last-arg shape,” you can build your own combinators:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">fn</span> <span class="fu">assert_field</span><span class="op">(</span>name<span class="op">:</span> <span class="dt">String</span><span class="op">,</span> value<span class="op">:</span> <span class="dt">String</span><span class="op">,</span> then<span class="op">:</span> <span class="kw">fn</span><span class="op">(</span><span class="dt">String</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>a<span class="op">,</span> <span class="dt">FieldError</span><span class="op">))</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span>a<span class="op">,</span> <span class="dt">FieldError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">case</span> string<span class="op">.</span><span class="fu">trim</span><span class="op">(</span>value<span class="op">)</span> <span class="op">{</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">""</span> <span class="op">-&gt;</span> <span class="dt">Error</span><span class="op">(</span><span class="dt">FieldError</span><span class="op">(</span>name<span class="op">,</span> <span class="st">"must not be empty"</span><span class="op">))</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    trimmed <span class="op">-&gt;</span> <span class="fu">then</span><span class="op">(</span>trimmed<span class="op">)</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">}</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="kw">pub</span> <span class="kw">fn</span> <span class="fu">parse_form</span><span class="op">(</span>raw<span class="op">:</span> <span class="dt">Form</span><span class="op">)</span> <span class="op">-&gt;</span> <span class="dt">Result</span><span class="op">(</span><span class="dt">ValidForm</span><span class="op">,</span> <span class="dt">FieldError</span><span class="op">)</span> <span class="op">{</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> name <span class="op">&lt;-</span> <span class="fu">assert_field</span><span class="op">(</span><span class="st">"name"</span><span class="op">,</span> raw<span class="op">.</span>name<span class="op">)</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> email <span class="op">&lt;-</span> <span class="fu">assert_field</span><span class="op">(</span><span class="st">"email"</span><span class="op">,</span> raw<span class="op">.</span>email<span class="op">)</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> age_str <span class="op">&lt;-</span> <span class="fu">assert_field</span><span class="op">(</span><span class="st">"age"</span><span class="op">,</span> raw<span class="op">.</span>age<span class="op">)</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>  <span class="kw">use</span> age <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span><span class="fu">parse_int</span><span class="op">(</span>age_str<span class="op">))</span></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Ok</span><span class="op">(</span><span class="dt">ValidForm</span><span class="op">(</span>name<span class="op">,</span> email<span class="op">,</span> age<span class="op">))</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a><span class="op">}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Each <code>use</code> line is a single concern; the body is a flat list of validations. Without <code>use</code> this would nest five levels deep.</p>
+<hr>
+</section>
+<section id="syntactic-variants" class="level2">
+<h2 class="anchored" data-anchor-id="syntactic-variants">9. Syntactic variants</h2>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> <span class="op">&lt;-</span> <span class="fu">f</span><span class="op">(</span>args<span class="op">)</span>            <span class="co">// zero-arg callback   (guards)</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> x <span class="op">&lt;-</span> <span class="fu">f</span><span class="op">(</span>args<span class="op">)</span>          <span class="co">// one-arg callback    (try, then)</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> x<span class="op">,</span> y <span class="op">&lt;-</span> <span class="fu">f</span><span class="op">(</span>args<span class="op">)</span>       <span class="co">// multi-arg callback  (rare; e.g. fold-style helpers)</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> _ <span class="op">&lt;-</span> <span class="fu">f</span><span class="op">(</span>args<span class="op">)</span>          <span class="co">// discard the binding (run for side effect)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>The number of bindings on the left of <code>&lt;-</code> must match the callback’s parameter count exactly. Compiler enforces this.</p>
+<hr>
+</section>
+<section id="type-constraints-the-part-that-bites" class="level2">
+<h2 class="anchored" data-anchor-id="type-constraints-the-part-that-bites">10. Type constraints (the part that bites)</h2>
+<p>The callback’s return type has to line up with what the helper expects. The two most common mismatches:</p>
+<p><strong>Mismatched error types in <code>result.try</code>:</strong></p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb15"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co">// won't compile — EmailError ≠ CustomerError</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> email <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span>email<span class="op">.</span><span class="fu">new</span><span class="op">(</span>raw<span class="op">))</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="co">// fixed — lift the inner error</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> email <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(</span>email<span class="op">.</span><span class="fu">new</span><span class="op">(</span>raw<span class="op">)</span> <span class="op">|&gt;</span> result<span class="op">.</span><span class="fu">map_error</span><span class="op">(</span><span class="dt">InvalidEmail</span><span class="op">))</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p><strong>Wrong return type from the body:</strong></p>
+<p>The body of a <code>use</code> block must return what the helper’s callback declared. For <code>result.try</code>, that’s <code>Result(_, e)</code>. So the last line of a <code>use</code>-chained function is almost always <code>Ok(something)</code> or <code>Error(something)</code>, not a bare value:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb16"><pre class="sourceCode gleam code-with-copy"><code class="sourceCode gleam"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="kw">use</span> email <span class="op">&lt;-</span> result<span class="op">.</span><span class="fu">try</span><span class="op">(...)</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="dt">Ok</span><span class="op">(</span><span class="dt">Customer</span><span class="op">(</span>email<span class="op">))</span>   <span class="co">// ✓</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="dt">Customer</span><span class="op">(</span>email<span class="op">)</span>       <span class="co">// ✗ — type error, expected Result, got Customer</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<hr>
+</section>
+<section id="when-not-to-reach-for-use" class="level2">
+<h2 class="anchored" data-anchor-id="when-not-to-reach-for-use">11. When NOT to reach for <code>use</code></h2>
+<ul>
+<li><strong>One-shot pattern matching</strong> with no chain: <code>let assert Ok(x) = ...</code> is fine (when crashing on Error is acceptable) and reads more directly than <code>use x &lt;- result.try(...)</code> followed by a single line.</li>
+<li><strong>The body has only one statement.</strong> Nesting one level isn’t a sin. <code>use</code> pays off when there are two or more steps to flatten.</li>
+<li><strong>The helper isn’t really doing control flow.</strong> If you find yourself writing a “helper” that just calls the callback unconditionally, the <code>use</code> is just obfuscation — drop it.</li>
+</ul>
+<hr>
+</section>
+<section id="mental-model-summary" class="level2">
+<h2 class="anchored" data-anchor-id="mental-model-summary">12. Mental model summary</h2>
+<p>Forget the syntax for a second. The shape <code>use ... &lt;- f(...)</code> says:</p>
+<blockquote class="blockquote">
+<p>“I’m about to do the rest of this function as a callback. <code>f</code>, you decide what to do with it: run it, skip it, run it conditionally, run it with cleanup, run it with these arguments. Whatever you return is what I return.”</p>
+</blockquote>
+<p>That’s it. Every pattern in this doc is a different choice the helper makes about how to use that callback. Once helpers exist for guards (your domain), <code>Result</code> (<code>result.try</code>), <code>Option</code> (<code>option.then</code>), and resources, most Gleam business logic flattens into a sequence of <code>use</code> lines reading top-to-bottom like a recipe.</p>
+<p>Compared to other languages:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 22%">
+<col style="width: 22%">
+<col style="width: 22%">
+<col style="width: 20%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Need</th>
+<th>Gleam</th>
+<th>Rust</th>
+<th>Clojure</th>
+<th>Haskell</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Result short-circuit</td>
+<td><code>use x &lt;- try(...)</code></td>
+<td><code>?</code></td>
+<td><code>some-&gt;</code> / <code>mlet</code></td>
+<td><code>do</code> + <code>&lt;-</code></td>
+</tr>
+<tr class="even">
+<td>Guard / early return</td>
+<td><code>use &lt;- guard(...)</code></td>
+<td><code>if cond { return }</code></td>
+<td>macro / <code>when-let</code></td>
+<td><code>when</code></td>
+</tr>
+<tr class="odd">
+<td>Resource handling</td>
+<td><code>use r &lt;- with(...)</code></td>
+<td><code>Drop</code> trait</td>
+<td><code>with-open</code></td>
+<td><code>bracket</code></td>
+</tr>
+<tr class="even">
+<td>New control flow</td>
+<td>helper + <code>use</code></td>
+<td>macro / fn</td>
+<td>macro</td>
+<td>monad / fn</td>
+</tr>
+</tbody>
+</table>
+<p>Gleam is unusual in answering all four with the same one-syntax-rule mechanism. That uniformity is the whole point.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./12_in_practice.html" class="pagination-link" aria-label="12. Putting It Into Practice">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-title">12. Putting It Into Practice</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/escherize/gleam-katas/edit/solutions/docs/book/use.md" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/escherize/gleam-katas/blob/solutions/docs/book/use.md" class="toc-action"><i class="bi empty"></i>View source</a></li></ul></div></div></div></footer></body></html>
