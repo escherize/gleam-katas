@@ -4,7 +4,7 @@ project:
 
 book:
   title: "DDD in Gleam"
-  subtitle: "A textbook in ten katas"
+  subtitle: "Ten katas in idiomatic Gleam"
   author: "Bryan Maass"
   date: today
   cover-image: cover.png    # 1200x1800 — used by the PDF title page

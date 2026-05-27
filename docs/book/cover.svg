@@ -33,14 +33,15 @@
   <text class="meta" x="120" y="135" font-size="22">Idiomatic Gleam · Domain-Driven Design</text>
   <text class="meta" x="1080" y="135" font-size="22" text-anchor="end">2026</text>
 
-  <!-- Title and subtitle. textLength + lengthAdjust forces the
-       rendered text to fit a fixed width regardless of which serif
-       the rasterizer falls back to (Iowan / Hoefler aren't on every
-       system, and the fallback metrics differ enough to clip). -->
-  <text class="title" x="120" y="380" font-size="180"
-        textLength="900" lengthAdjust="spacingAndGlyphs">DDD in Gleam</text>
-  <text class="sub" x="120" y="465" font-size="56"
-        textLength="640" lengthAdjust="spacingAndGlyphs">A textbook in ten katas</text>
+  <!-- Title font size dropped from 180 to 140: rsvg-convert honors
+       textLength's spacing component but not its glyph-scaling
+       component, so fallback serifs at 180pt overran the layout.
+       At 140pt the natural width fits the textLength cap even when
+       the renderer ignores lengthAdjust="spacingAndGlyphs". -->
+  <text class="title" x="120" y="380" font-size="140"
+        textLength="780" lengthAdjust="spacingAndGlyphs">DDD in Gleam</text>
+  <text class="sub" x="120" y="455" font-size="50"
+        textLength="640" lengthAdjust="spacingAndGlyphs">Ten katas in idiomatic Gleam</text>
 
   <!-- Kata bars: each bar = one kata, width proportional to chapter
        length. Numbers picked to look like real data without being

@@ -1,4 +1,4 @@
-# DDD in Gleam: a textbook
+# DDD in Gleam
 
 One DDD concept per chapter, paired with the Gleam patterns the compiler will enforce.
 

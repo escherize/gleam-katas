@@ -30,11 +30,11 @@
   <!-- Left column: title block -->
   <text class="meta" x="80" y="100" font-size="18">Idiomatic Gleam · DDD</text>
 
-  <text class="title" x="80" y="240" font-size="100"
-        textLength="600" lengthAdjust="spacingAndGlyphs">DDD in Gleam</text>
+  <text class="title" x="80" y="240" font-size="84"
+        textLength="500" lengthAdjust="spacingAndGlyphs">DDD in Gleam</text>
 
-  <text class="sub" x="80" y="310" font-size="38"
-        textLength="440" lengthAdjust="spacingAndGlyphs">A textbook in ten katas</text>
+  <text class="sub" x="80" y="305" font-size="32"
+        textLength="440" lengthAdjust="spacingAndGlyphs">Ten katas in idiomatic Gleam</text>
 
   <text class="auth" x="80" y="500" font-size="26">Bryan Maass</text>
   <text class="meta" x="80" y="540" font-size="17">github.com/escherize/gleam-katas</text>
