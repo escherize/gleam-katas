@@ -6,6 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="description" content="A 10-kata progression that teaches idiomatic Gleam through DDD’s vocabulary.">
 
 <title>07. Kata 6: Repositories – DDD in Gleam</title>
 <style>
@@ -109,6 +110,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 }</script>
 
 
+<meta property="og:title" content="07. Kata 6: Repositories – DDD in Gleam">
+<meta property="og:description" content="A 10-kata progression that teaches idiomatic Gleam through DDD’s vocabulary.">
+<meta property="og:image" content="https://escherize.com/gleam-katas/og-image.png">
+<meta property="og:site_name" content="DDD in Gleam">
+<meta property="og:image:height" content="630">
+<meta property="og:image:width" content="1200">
+<meta name="twitter:title" content="07. Kata 6: Repositories – DDD in Gleam">
+<meta name="twitter:description" content="A 10-kata progression that teaches idiomatic Gleam through DDD’s vocabulary.">
+<meta name="twitter:image" content="https://escherize.com/gleam-katas/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image-height" content="630">
+<meta name="twitter:image-width" content="1200">
 </head>
 
 <body class="nav-sidebar floating quarto-light">
@@ -599,7 +612,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     }
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);
-        var filterRegex = new RegExp('/' + window.location.host + '/');
+        var filterRegex = new RegExp("https:\/\/escherize\.com\/gleam-katas\/");
       var isInternal = (href) => {
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }

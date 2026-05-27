@@ -7,7 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Bryan Maass">
-<meta name="dcterms.date" content="2026-05-23">
+<meta name="dcterms.date" content="2026-05-26">
+<meta name="description" content="A 10-kata progression that teaches idiomatic Gleam through DDD’s vocabulary.">
 
 <title>DDD in Gleam</title>
 <style>
@@ -75,6 +76,18 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 
 
+<meta property="og:title" content="DDD in Gleam">
+<meta property="og:description" content="A 10-kata progression that teaches idiomatic Gleam through DDD’s vocabulary.">
+<meta property="og:image" content="https://escherize.com/gleam-katas/og-image.png">
+<meta property="og:site_name" content="DDD in Gleam">
+<meta property="og:image:height" content="630">
+<meta property="og:image:width" content="1200">
+<meta name="twitter:title" content="DDD in Gleam">
+<meta name="twitter:description" content="A 10-kata progression that teaches idiomatic Gleam through DDD’s vocabulary.">
+<meta name="twitter:image" content="https://escherize.com/gleam-katas/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image-height" content="630">
+<meta name="twitter:image-width" content="1200">
 </head>
 
 <body class="nav-sidebar floating quarto-light">
@@ -229,6 +242,11 @@ ul.task-list li input[type="checkbox"] {
 <p class="subtitle lead">A textbook in ten katas</p>
 </div>
 
+<div>
+  <div class="description">
+    A 10-kata progression that teaches idiomatic Gleam through DDD’s vocabulary.
+  </div>
+</div>
 
 
 <div class="quarto-title-meta">
@@ -243,7 +261,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">May 23, 2026</p>
+      <p class="date">May 26, 2026</p>
     </div>
   </div>
   
@@ -368,7 +386,7 @@ ul.task-list li input[type="checkbox"] {
     }
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);
-        var filterRegex = new RegExp('/' + window.location.host + '/');
+        var filterRegex = new RegExp("https:\/\/escherize\.com\/gleam-katas\/");
       var isInternal = (href) => {
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }
