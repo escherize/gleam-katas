@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!--
+    Social/OG card. 1200x630 is the standard OpenGraph size.
+    Two-column layout: title + subtitle + author on the left, the
+    ten kata bars (the same metaphor as the book cover) on the right.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#181b29"/>
+      <stop offset="100%" stop-color="#1e2233"/>
+    </linearGradient>
+    <style>
+      .title { font-family: 'Iowan Old Style', 'Hoefler Text', 'Charter', 'Georgia', serif;
+               font-weight: 700; fill: #e3d8be; }
+      .sub   { font-family: 'Iowan Old Style', 'Hoefler Text', 'Charter', 'Georgia', serif;
+               font-style: italic; fill: #d099d4; }
+      .meta  { font-family: ui-monospace, 'SF Mono', 'Menlo', monospace;
+               fill: #8c8fa3; letter-spacing: 0.18em; text-transform: uppercase; }
+      .auth  { font-family: 'Iowan Old Style', 'Hoefler Text', 'Charter', 'Georgia', serif;
+               fill: #e3d8be; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Pink accent bar down the left edge -->
+  <rect x="0" y="0" width="10" height="630" fill="#ffaff3"/>
+
+  <!-- Left column: title block -->
+  <text class="meta" x="80" y="100" font-size="18">Idiomatic Gleam · DDD</text>
+
+  <text class="title" x="80" y="240" font-size="100"
+        textLength="600" lengthAdjust="spacingAndGlyphs">DDD in Gleam</text>
+
+  <text class="sub" x="80" y="310" font-size="38"
+        textLength="440" lengthAdjust="spacingAndGlyphs">A textbook in ten katas</text>
+
+  <text class="auth" x="80" y="500" font-size="26">Bryan Maass</text>
+  <text class="meta" x="80" y="540" font-size="17">github.com/escherize/gleam-katas</text>
+
+  <!-- Right column: compressed kata bars (mirror of the cover) -->
+  <g transform="translate(750, 130)">
+    <rect x="0" y="0"   width="180" height="14" rx="2" fill="#ffaff3" opacity="0.85"/>
+    <rect x="0" y="34"  width="300" height="14" rx="2" fill="#ffaff3" opacity="0.75"/>
+    <rect x="0" y="68"  width="240" height="14" rx="2" fill="#ffaff3" opacity="0.65"/>
+    <rect x="0" y="102" width="350" height="14" rx="2" fill="#e3d8be" opacity="0.85"/>
+    <rect x="0" y="136" width="380" height="14" rx="2" fill="#e3d8be" opacity="0.78"/>
+    <rect x="0" y="170" width="320" height="14" rx="2" fill="#e3d8be" opacity="0.70"/>
+    <rect x="0" y="204" width="360" height="14" rx="2" fill="#e3d8be" opacity="0.62"/>
+    <rect x="0" y="238" width="290" height="14" rx="2" fill="#d099d4" opacity="0.85"/>
+    <rect x="0" y="272" width="260" height="14" rx="2" fill="#d099d4" opacity="0.72"/>
+    <rect x="0" y="306" width="230" height="14" rx="2" fill="#d099d4" opacity="0.58"/>
+  </g>
+</svg>

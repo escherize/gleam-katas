@@ -7,8 +7,19 @@ book:
   subtitle: "A textbook in ten katas"
   author: "Bryan Maass"
   date: today
-  cover-image: cover.png
+  cover-image: cover.png    # 1200x1800 — used by the PDF title page
+  description: "A 10-kata progression that teaches idiomatic Gleam through DDD's vocabulary."
   search: true
+  site-url: https://escherize.com/gleam-katas/
+  open-graph:
+    image: og-image.png     # 1200x630 — used by social cards
+    image-width: 1200
+    image-height: 630
+  twitter-card:
+    image: og-image.png
+    image-width: 1200
+    image-height: 630
+    card-style: summary_large_image
   repo-url: https://github.com/escherize/gleam-katas
   repo-branch: solutions
   repo-subdir: docs/book

@@ -33,9 +33,14 @@
   <text class="meta" x="120" y="135" font-size="22">Idiomatic Gleam · Domain-Driven Design</text>
   <text class="meta" x="1080" y="135" font-size="22" text-anchor="end">2026</text>
 
-  <!-- Title -->
-  <text class="title" x="120" y="380" font-size="180">DDD in Gleam</text>
-  <text class="sub"   x="120" y="465" font-size="56">A textbook in ten katas</text>
+  <!-- Title and subtitle. textLength + lengthAdjust forces the
+       rendered text to fit a fixed width regardless of which serif
+       the rasterizer falls back to (Iowan / Hoefler aren't on every
+       system, and the fallback metrics differ enough to clip). -->
+  <text class="title" x="120" y="380" font-size="180"
+        textLength="900" lengthAdjust="spacingAndGlyphs">DDD in Gleam</text>
+  <text class="sub" x="120" y="465" font-size="56"
+        textLength="640" lengthAdjust="spacingAndGlyphs">A textbook in ten katas</text>
 
   <!-- Kata bars: each bar = one kata, width proportional to chapter
        length. Numbers picked to look like real data without being
@@ -55,17 +60,17 @@
     <rect x="0" y="138"  width="740" height="28" rx="3" fill="#e3d8be" opacity="0.85"/>
     <text class="label" x="755" y="158"  font-size="20">04 · Order</text>
     <!-- kata 5 (Events)       -->
-    <rect x="0" y="184"  width="930" height="28" rx="3" fill="#e3d8be" opacity="0.78"/>
-    <text class="label" x="945" y="204"  font-size="20" fill="#8c8fa3">05 · Events</text>
+    <rect x="0" y="184"  width="720" height="28" rx="3" fill="#e3d8be" opacity="0.78"/>
+    <text class="label" x="735" y="204"  font-size="20" fill="#8c8fa3">05 · Events</text>
     <!-- kata 6 (Repositories) -->
-    <rect x="0" y="230"  width="830" height="28" rx="3" fill="#e3d8be" opacity="0.70"/>
-    <text class="label" x="845" y="250"  font-size="20">06 · Repositories</text>
+    <rect x="0" y="230"  width="640" height="28" rx="3" fill="#e3d8be" opacity="0.70"/>
+    <text class="label" x="655" y="250"  font-size="20">06 · Repositories</text>
     <!-- kata 7 (Bounded ctx)  -->
-    <rect x="0" y="276"  width="900" height="28" rx="3" fill="#e3d8be" opacity="0.62"/>
-    <text class="label" x="915" y="296"  font-size="20" fill="#8c8fa3">07 · Bounded Contexts</text>
+    <rect x="0" y="276"  width="690" height="28" rx="3" fill="#e3d8be" opacity="0.62"/>
+    <text class="label" x="705" y="296"  font-size="20" fill="#8c8fa3">07 · Bounded Contexts</text>
     <!-- kata 8 (HTTP)         -->
-    <rect x="0" y="322"  width="780" height="28" rx="3" fill="#d099d4" opacity="0.85"/>
-    <text class="label" x="795" y="342"  font-size="20">08 · HTTP boundary</text>
+    <rect x="0" y="322"  width="600" height="28" rx="3" fill="#d099d4" opacity="0.85"/>
+    <text class="label" x="615" y="342"  font-size="20">08 · HTTP boundary</text>
     <!-- kata 9 (SQLite)       -->
     <rect x="0" y="368"  width="690" height="28" rx="3" fill="#d099d4" opacity="0.72"/>
     <text class="label" x="705" y="388"  font-size="20">09 · SQLite repo</text>
