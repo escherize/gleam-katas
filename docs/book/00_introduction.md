@@ -1,47 +1,41 @@
-# 00 — Introduction
+# 00. Introduction
 
-A hands-on walkthrough of Domain-Driven Design fundamentals, using Gleam to
-make the patterns *enforceable* rather than aspirational. Each chapter pairs
-one DDD concept with the small set of Gleam features that make it
-compile-time true.
+Gleam makes the core DDD patterns *enforceable* rather than aspirational.
+Each chapter pairs one Domain-Driven Design concept with the small set of
+Gleam features that make it compile-time true.
 
-It's not a survey of DDD, and it's not a Gleam tutorial. It's the
-intersection — the place where the language and the methodology compound on
-each other.
+This is neither a DDD survey nor a Gleam tutorial. It covers the
+intersection, where the language and the methodology compound.
 
 ---
 
-## What DDD actually is
+## DDD makes business rules the load-bearing structure
 
-Domain-Driven Design is a way of organizing software so that the
-**vocabulary**, **boundaries**, and **invariants** of the business are the
-load-bearing structure of the code, not an afterthought layered on top of
-CRUD models.
+Domain-Driven Design makes the **vocabulary**, **boundaries**, and
+**invariants** of the business the load-bearing structure of the code.
+They are not a layer on top of CRUD models.
 
-Three ideas do most of the work:
+The ideas below do most of the work; the familiar patterns (Repositories,
+Factories, Anti-Corruption Layers) are consequences of them.
 
-1. **Make illegal states unrepresentable.** If "an order with zero lines cannot be placed" is a rule, the code shouldn't *check* it everywhere — the type should *forbid* it.
-2. **Concepts have shapes.** A `CustomerId` is not a `String`. A `Money` is not a number. Modeling them as their own types makes the rest of the system more honest about what it does.
-3. **Behavior lives with the data.** "An order is placed" isn't a flag flip in a service somewhere — it's a method on the order itself, with its own preconditions, returning either a new state or a typed reason it can't transition.
-
-Most introductions to DDD bury these ideas in patterns (Repositories,
-Factories, Anti-Corruption Layers). The patterns are real, but they're
-*consequences*. The cause is those three ideas above.
+1. **Make illegal states unrepresentable.** If "an order with zero lines cannot be placed" is a rule, the type should *forbid* it; the code shouldn't *check* it everywhere.
+2. **Concepts have shapes.** A `CustomerId` is not a `String`, and a `Money` is not a number. Modeling them as their own types makes the rest of the system honest about what it does.
+3. **Behavior lives with the data.** "An order is placed" isn't a flag flip in a service; it's an operation on the order itself. It has preconditions and returns either a new state or a typed reason the transition failed.
 
 ---
 
-## Why Gleam
+## Gleam's constraints map onto DDD's demands
 
 Gleam is small. The whole language has the feel of a careful editor's pass:
-nothing extra, nothing fancy, no escape hatches.
+nothing extra, and no escape hatches.
 
-- **[Algebraic data types](https://tour.gleam.run/data-types/custom-types/)** with exhaustive [pattern matching](https://tour.gleam.run/flow-control/case-expressions/). Every alternative gets named; the compiler refuses to let you forget one.
-- **[Opaque types](https://tour.gleam.run/advanced-features/opaque-types/)** — a one-keyword feature that lets a module hide its constructor. Outside the module, the type exists; the only way to make one is through functions you expose.
+- **[Algebraic data types](https://tour.gleam.run/data-types/custom-types/)** with exhaustive [pattern matching](https://tour.gleam.run/flow-control/case-expressions/). You name every alternative; the compiler refuses to let you forget one.
+- **[Opaque types](https://tour.gleam.run/advanced-features/opaque-types/)**: one keyword lets a module hide its constructor. Outside the module the type exists, and the only way to make one is through functions the module exposes.
 - **No exceptions, no nulls.** Failure is a value ([`Result(a, e)`](https://tour.gleam.run/data-types/results/), `Option(a)`). Callers can't pretend it didn't happen.
 - **No `if`.** Every branch is a [`case`](https://tour.gleam.run/flow-control/case-expressions/), which forces you to consider the alternatives.
-- **One control-flow primitive ([`use <-`](https://tour.gleam.run/advanced-features/use/))** that handles guards, chaining, resource handling, and any custom flow you'd write — with a single syntactic rule.
+- **One control-flow primitive ([`use <-`](https://tour.gleam.run/advanced-features/use/))** that handles guards, chaining, resource handling, and any custom flow you'd write, under one syntactic rule.
 
-Each of these maps almost suspiciously onto what DDD wants:
+Each maps almost suspiciously well onto what DDD wants:
 
 | DDD wants...                             | Gleam gives you...                            |
 | ---------------------------------------- | --------------------------------------------- |
@@ -56,44 +50,38 @@ Gleam happens to be the right shape for the job.
 
 ---
 
-## Why this kata progression
+## The katas add one concept at a time
 
-The progression goes:
+1. **Value Objects**: `Email`, `Money`. Build the simplest unit. Practice opaque types, smart constructors, error sums, `use` chaining.
+2. **Entities**: `Customer`. Same toolkit, but now identity matters. Practice ID types, equality semantics, state transitions as new immutable values.
+3. **Aggregates**: `Order` + `OrderLine`. Multiple internal pieces, invariants spanning them all. Practice hiding internals, designing a single front door.
+4. **Domain Events**: `OrderPlaced` and friends. State transitions that *also* report what happened.
 
-1. **Value Objects** — `Email`, `Money`. Build the simplest unit. Practice opaque types, smart constructors, error sums, `use` chaining.
-2. **Entities** — `Customer`. Same toolkit, but now identity matters. Practice ID types, equality semantics, state transitions as new immutable values.
-3. **Aggregates** — `Order` + `OrderLine`. Multiple internal pieces, invariants spanning them all. Practice hiding internals, designing a single front door.
-4. **Domain Events** — `OrderPlaced`, etc. State transitions that *also* report what happened. (Coming in a later chapter.)
-
-Each kata adds **one** new DDD concept. Each chapter introduces **only the
-Gleam features needed for that concept.** By the end you can read or write
-idiomatic domain code in Gleam without having to learn either subject in the
+Each kata adds **one** new DDD concept, and each chapter introduces **only
+the Gleam features that concept needs.** By the end you can read and write
+idiomatic domain code in Gleam without learning either subject in the
 abstract first.
 
 ---
 
-## How to read this
-
-Each chapter follows the same shape:
+## Each chapter follows one shape
 
 - **Concept.** The DDD idea in plain language.
-- **Gleam fundamentals you need.** Just enough — no full language tour.
+- **New Gleam fundamentals.** Only what this kata needs.
 - **The task.** A function signature and rules. Implement it.
-- **Hints / what to do.** Nudges to unblock without spoiling the design.
-- **A walk-through.** The reference solution, with reasoning.
-- **Critique.** What's solid, what could be tightened, what changes when the system grows.
-- **DDD takeaway.** What the code now *guarantees*, and why that matters past the toy example.
+- **Hints.** Nudges that unblock without spoiling the design.
+- **Walk-through.** The reference solution, with reasoning.
+- **Critique.** What holds, what doesn't, what changes as the system grows.
+- **DDD takeaway.** The property the code now *guarantees*, and why it matters past the toy example.
 
 The exercises are real. Type the code. Try to satisfy the tests. Then read
 the walk-through.
 
 ---
 
-## Gleam resources
+## Keep these tabs open
 
-Useful tabs to keep open while you work through the book:
-
-- **[The Gleam Language Tour](https://tour.gleam.run/)** — interactive, in-browser. The single best place to look up any language feature.
-- **[Standard library reference](https://hexdocs.pm/gleam_stdlib/)** — `gleam/string`, `gleam/list`, `gleam/result`, etc. You'll reach for these in every kata.
-- **[Gleam documentation index](https://gleam.run/documentation/)** — guides, cheatsheets (including a [Gleam-for-Rust](https://gleam.run/cheatsheets/gleam-for-rust-users/) and [Gleam-for-Elixir](https://gleam.run/cheatsheets/gleam-for-elixir-users/) one), conventions.
-- **[Gleam home](https://gleam.run/)** — install instructions if you don't already have the `gleam` CLI.
+- **[The Gleam Language Tour](https://tour.gleam.run/)**: interactive, in-browser. The best place to look up any language feature.
+- **[Standard library reference](https://hexdocs.pm/gleam_stdlib/)**: `gleam/string`, `gleam/list`, `gleam/result`, etc. You'll reach for these in every kata.
+- **[Gleam documentation index](https://gleam.run/documentation/)**: guides, conventions, and cheatsheets, including [Gleam-for-Rust](https://gleam.run/cheatsheets/gleam-for-rust-users/) and [Gleam-for-Elixir](https://gleam.run/cheatsheets/gleam-for-elixir-users/).
+- **[Gleam home](https://gleam.run/)**: install instructions if you don't have the `gleam` CLI.

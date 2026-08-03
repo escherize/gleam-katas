@@ -1,24 +1,24 @@
-# 03 — Kata 2: Value Objects with operations (`Money`)
+# 03. Kata 2: Value Objects with operations (`Money`)
 
 ## Concept
 
-Same shape as `Email` (opaque type, smart constructor) but now with two new
+Same shape as `Email` (opaque type, smart constructor) but with new
 pressures:
 
-1. **Composition.** A `Money` has *two* attributes — amount and currency — and they have to stay coherent.
+1. **Composition.** A `Money` has two attributes, amount and currency, and they must stay coherent.
 2. **Operations that can fail at the domain level.** Adding USD to EUR is nonsense; the type system should stop it.
 
-This is where DDD starts to feel less like "wrap your strings" and more like
-*encoding the rules of the domain into the types*. The type doesn't just
-store data — it carries the operations that respect its invariants.
+This is where DDD starts to feel less like "wrap your strings" and more
+like *encoding the rules of the domain into the types*. The type carries
+the operations that respect its invariants, not just data.
 
 ---
 
 ## New Gleam fundamentals
 
-You'll need two more concepts on top of what Kata 1 used.
+Kata 1's toolkit gains record updates and `use <-`.
 
-### Record update syntax
+### Record update: copy with overrides
 
 To produce a "modified" copy of a record without re-listing every field:
 
@@ -27,10 +27,9 @@ let updated = Money(..money, amount: 0)
 ```
 
 `..money` says "take all the fields from this value, then override the
-named ones." Critical for keeping aggregate code from drowning in field
-repetition.
+named ones," which keeps aggregate code from drowning in field repetition.
 
-### `use <-` — guards as functions
+### `use <-`: guards as functions
 
 Some logic appears as a precondition again and again:
 
@@ -71,15 +70,15 @@ pub fn add(a: Money, b: Money) -> Result(Money, MoneyError) {
 rest of your block into a callback and passes it as the helper's last
 argument.
 
-A few mechanical facts:
+The mechanics:
 
-- `use <-` (no binding) means the callback takes zero arguments — it's a guard.
-- `use x <- f(...)` (one binding) means the callback takes one argument — used for unwrapping (we'll see this in Kata 3).
+- `use <-` (no binding): the callback takes zero arguments; it's a guard.
+- `use x <- f(...)` (one binding): the callback takes one argument, used for unwrapping. (Kata 3 uses this.)
 - The helper decides whether to call the callback. If it doesn't (e.g., currency mismatch), it returns its own error directly.
 - The lowercase `t` in `Result(t, MoneyError)` is a *generic type variable*. It lets the helper work for callers whose body returns `Result(Money, ...)`, `Result(Order, ...)`, anything.
 
-This is the pattern that will let aggregates read top-to-bottom like a list
-of business rules. (For a deeper explainer, see [`docs/use.md`](../use.md).)
+This is the pattern that lets aggregates read top-to-bottom like a list of
+business rules. See [`docs/use.md`](../use.md) for a deeper explainer.
 
 ---
 
@@ -124,16 +123,16 @@ The tests in `test/money_test.gleam` are the spec.
 
 ---
 
-## Hints — what to do
+## Hints
 
 1. **Write the naive version first.** Each operation does its own checks: `subtract` checks currencies *and* checks the result isn't negative. `multiply` checks negativity. It will work and the tests will pass. Get there first.
 2. **Then look for duplication.** Once it works, you'll see two patterns repeating across the file:
    - Every operation that touches two `Money`s repeats the same currency check.
    - Every operation that produces a new `Money` independently re-checks the negative-amount rule.
-3. **Refactor: route everything through `new`.** If `new` is the single source of truth for the negative-amount invariant, then `subtract` doesn't need its own check, and `multiply` gets the check for free.
-4. **Refactor: lift the currency check into a helper.** Write `require_same_currency` with the shape from the fundamentals section. Use it via `use <-`. Suddenly every operation reads as `require same currency, then compute`.
-5. **`zero(money)` doesn't return `Result`.** Why? Because `0` is always valid — it can never violate the invariant. Lean on the types: when an operation is total, say so by leaving `Result` out of the return type.
-6. **Why does the test for `multiply(m, -1)` expect `NegativeAmount`?** Trace it through your implementation. If `multiply` routes through `new`, this falls out automatically — that's the point of funneling.
+3. **Refactor: route everything through `new`.** If `new` is the source of truth for the negative-amount invariant, then `subtract` doesn't need its own check, and `multiply` gets the check for free.
+4. **Refactor: lift the currency check into a helper.** Write `require_same_currency` with the shape from the fundamentals section. Use it via `use <-`. Every operation then reads as "require same currency, then compute."
+5. **`zero(money)` doesn't return `Result`.** Why? `0` is always valid; it can never violate the invariant. When an operation is total, say so by leaving `Result` out of the return type.
+6. **Why does the test for `multiply(m, -1)` expect `NegativeAmount`?** Trace it through your implementation. If `multiply` routes through `new`, this falls out automatically; that's the point of funneling.
 
 ---
 
@@ -200,14 +199,14 @@ pub fn zero(money: Money) -> Money {
 
 ## Walk-through
 
-**Funneling through `new`.** Every constructor path re-validates. `subtract`
-no longer needs its own `amount >= 0` check — `new` does it. `multiply`
-catches negative factors automatically — also `new`. The non-negative
-invariant exists in exactly *one place*, and you literally cannot construct
-a `Money` that violates it.
+**Funneling through `new`.** Every constructor path re-validates.
+`subtract` no longer needs its own `amount >= 0` check; `new` does it.
+`multiply` catches negative factors the same way. The non-negative
+invariant exists in exactly *one place*, and you cannot construct a
+`Money` that violates it.
 
-**`use <- require_same_currency(a, b)`.** The duplicate currency check from
-a naive solution gets pulled into a named helper. Each operation now reads
+**`use <- require_same_currency(a, b)`.** A named helper absorbs the
+duplicate currency check from the naive solution. Each operation now reads
 as a flat list of business rules:
 
 > require same currency, then sum.
@@ -223,19 +222,19 @@ pub fn add(a: Money, b: Money) -> Result(Money, MoneyError) {
 }
 ```
 
-`use` is *just sugar* for that callback shape. Once you can read one form,
-you can read the other.
+`use` is sugar for that callback shape. Once you can read one form, you
+can read the other.
 
-**`zero` is total.** No `Result`. The function can't fail — `0` always
-satisfies the non-negative rule. Use record update (`Money(..money, amount:
-0)`) so the currency comes along for free.
+**`zero` is total.** No `Result`. The function can't fail; `0` always
+satisfies the non-negative rule. Record update (`Money(..money, amount:
+0)`) brings the currency along for free.
 
-**Storing amounts as `Int` minor units.** Floats and money don't mix —
-`0.1 + 0.2 ≠ 0.3` in IEEE-754. Real systems store cents. This is a domain
-modeling decision encoded in the type.
+**Storing amounts as `Int` minor units.** Floats and money don't mix;
+`0.1 + 0.2 ≠ 0.3` in IEEE-754. Real systems store cents. The choice is a
+domain decision encoded in the type.
 
 **Why `add` returns `Result`.** In a primitive world `add(usd_5, eur_3)`
-silently gives you `8` of nothing. In a domain-modeled world, it's a
+silently gives you `8` of nothing. In a domain-modeled world it's a
 `CurrencyMismatch` you must handle. The bug becomes impossible to ignore.
 
 ---
@@ -254,5 +253,5 @@ passes every invariant. Callers cannot lie about currency. Callers cannot
 smuggle in negative amounts. Every `Money` in your system is, by
 construction, valid.
 
-This is what people mean by "make illegal states unrepresentable" — it's
-not a slogan, it's the literal property your type now has.
+This is what people mean by "make illegal states unrepresentable"; it's
+not a slogan but the literal property your type now has.
